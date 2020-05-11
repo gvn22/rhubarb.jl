@@ -25,7 +25,7 @@ function L(p)
     # calculate linear coefficient vector
     α, β, δ, γ, τ = p
 
-    coeffs = [α 1.0;
+    coeffs = [α 0.0;
               0.0 -δ]
 
     return coeffs
@@ -59,7 +59,7 @@ function glv!(du,u,p,t)
 
     # a = 0.0
     b = L(p) * u
-    c = N(p) .* (u * u')
+    c = N(p) .* (u*u')
     d = F(p) * u
 
     for i ∈ [1,2]

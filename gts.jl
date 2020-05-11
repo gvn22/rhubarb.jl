@@ -24,23 +24,33 @@ function linear_coeffs(p)
     # calculate linear coefficient vector
     α, β, δ, γ = p
 
-    coeffs = [α 1.0;
+    coeffs = [α 0.0;
               0.0 -δ]
 
     return coeffs
+end
 
+function nl_coeffs(p)
+    # calculate linear coefficient vector
+    α, β, δ, γ = p
+
+    coeffs = [0.0 -β;
+              γ 0.0]
+
+    return coeffs
 end
 
 function lv_generalised!(du,u,p,t)
-    # Lotka-Volterra Equations
+    # Generalised Lotka-Volterra Equations
     x, y = u
     α, β, δ, γ = p
 
+    # a = 0.0
     b = linear_coeffs(p)*u
-    # c = nonlinear_coeffs(p)
+    c = nl_coeffs(p) .* (u * u')
 
-    du[1] = dx = b[1] - β*x*y
-    du[2] = dy = b[2] + γ*x*y
+    du[1] = dx = b[1] + c[1,1] + c[1,2]
+    du[2] = dy = b[2] + c[2,1] + c[2,2]
 end
 
 # u0 = [1.0;0.0;0.0]

@@ -20,7 +20,7 @@ function lv!(du,u,p,t)
     du[2] = dy = -δ*y + γ*x*y
 end
 
-function linear_coeffs(p)
+function L(p)
     # calculate linear coefficient vector
     α, β, δ, γ = p
 
@@ -30,7 +30,7 @@ function linear_coeffs(p)
     return coeffs
 end
 
-function nl_coeffs(p)
+function N(p)
     # calculate linear coefficient vector
     α, β, δ, γ = p
 
@@ -46,8 +46,8 @@ function lv_generalised!(du,u,p,t)
     α, β, δ, γ = p
 
     # a = 0.0
-    b = linear_coeffs(p)*u
-    c = nl_coeffs(p) .* (u * u')
+    b = L(p)*u
+    c = N(p) .* (u * u')
 
     du[1] = dx = b[1] + c[1,1] + c[1,2]
     du[2] = dy = b[2] + c[2,1] + c[2,2]

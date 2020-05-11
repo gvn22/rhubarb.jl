@@ -22,7 +22,7 @@ end
 
 function L(p)
     # calculate linear coefficient vector
-    α, β, δ, γ = p
+    α, β, δ, γ, τ = p
 
     coeffs = [α 0.0;
               0.0 -δ]
@@ -32,7 +32,7 @@ end
 
 function N(p)
     # calculate linear coefficient vector
-    α, β, δ, γ = p
+    α, β, δ, γ, τ = p
 
     coeffs = [0.0 -β;
               γ 0.0]
@@ -40,17 +40,30 @@ function N(p)
     return coeffs
 end
 
+function F(p)
+    # calculate a linear forcing term
+    α, β, δ, γ, τ = p
+
+    coeffs = (0.0/τ)*[1.0 0.0;
+                0.0 1.0]
+
+    return coeffs
+end
+
 function lv_generalised!(du,u,p,t)
     # Generalised Lotka-Volterra Equations
     x, y = u
-    α, β, δ, γ = p
+    α, β, δ, γ, τ = p
 
     # a = 0.0
     b = L(p)*u
     c = N(p) .* (u * u')
+    d = F(p)*u
 
-    du[1] = dx = b[1] + c[1,1] + c[1,2]
-    du[2] = dy = b[2] + c[2,1] + c[2,2]
+    for i ∈ [1,2]
+        du[i] = b[i] + c[i,1] + c[i,2]
+        # du[2] = dy = b[2] + c[2,1] + c[2,2]
+    end
 end
 
 # u0 = [1.0;0.0;0.0]
@@ -65,9 +78,9 @@ end
 # plot(sol,vars=(0,2))
 
 # LV
-u0 = [1.0,1.0]
+u0 = [1.0,2.0]
 tspan = (0.0,10.0)
-p = [1.5,1.0,3.0,1.0]
+p = [1.5,1.0,3.0,1.0,1.0]
 prob = ODEProblem(lv_generalised!,u0,tspan,p)
 sol  = solve(prob,RK4(),adaptive=true)
 plot(sol,vars=(1))

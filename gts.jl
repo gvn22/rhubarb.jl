@@ -23,7 +23,7 @@ end
 
 function L(p)
     # calculate linear coefficient vector
-    α, β, δ, γ, τ, M, L = p
+    α, β, δ, γ, τ = p
 
     coeffs = [α 1.0;
               0.0 -δ]
@@ -33,7 +33,7 @@ end
 
 function N(p)
     # calculate linear coefficient vector
-    α, β, δ, γ, τ, M, L = p
+    α, β, δ, γ, τ = p
 
     coeffs = [0.0 -β;
               γ 0.0]
@@ -43,7 +43,7 @@ end
 
 function F(p)
     # calculate a linear forcing term
-    α, β, δ, γ, τ, M, L = p
+    α, β, δ, γ, τ = p
 
     # start with 0 forcing
     coeffs = (0.0/τ)*[1.0 0.0;
@@ -54,15 +54,15 @@ end
 
 function glv!(du,u,p,t)
     # Generalisation of Lotka-Volterra -> towards GQL
-    x, y = u
-    α, β, δ, γ, τ, M, L = p
+    # x, y = u
+    α, β, δ, γ, τ = p
 
     # a = 0.0
     b = L(p) * u
     c = N(p) .* (u * u')
     d = F(p) * u
 
-    for i = 1:M
+    for i ∈ [1,2]
         du[i] = b[i] + sum(c[i,:])
         # du[2] = dy = b[2] + c[2,1] + c[2,2]
     end
@@ -70,8 +70,8 @@ end
 
 u0 = [1.0,1.0]
 tspan = (0.0,30.0)
-p = [1.5,1.0,3.0,1.0,1.0,2,0]
-prob = ODEProblem(lv_generalised!,u0,tspan,p)
+p = [1.5,1.0,3.0,1.0,1.0]
+prob = ODEProblem(glv!,u0,tspan,p)
 sol  = solve(prob,RK4(),adaptive=true)
 plot(sol,vars=(1))
 plot!(sol,vars=(2))

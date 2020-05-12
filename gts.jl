@@ -66,22 +66,21 @@ function glv!(du,u,p,t)
 
 end
 
-u0      = [1.0,1.0]
-p       = [1.5,1.0,3.0,1.0,1.0]
+function nl!(du,u,p,t)
 
-prob = ODEProblem(glv!,u0,tspan,p)
-@benchmark @btime sol  = solve(prob,RK4(),adaptive=true)
+    β, ν = p
 
-plot(sol,vars=(1))
-plot!(sol,vars=(2))
+    # Rossby
+    b = [β*k^2/(k^2 + l^2) for k in 1:3, l in 1:3]
+    du .= b.*u
 
-# u0 = [1.0;0.0;0.0]
-# tspan = (0.0,100.0)
-# p = [10.0,28.0,8/3]
-#
-# prob = ODEProblem(lorenz!,u0,tspan,p)
-# sol  = solve(prob,RK4(),adaptive=true)
-# @benchmark sol = solve(prob,Tsit5(),save_everystep=false)
-#
-# plot(sol,vars=(1,2,3))
-# plot(sol,vars=(0,2))
+end
+
+u0 = rand(3,3)
+p = [1.0,1.0]
+
+tspan   = (0.0,1.0)
+prob = ODEProblem(nl!,u0,tspan,p)
+sol  = solve(prob,RK4(),adaptive=true)
+
+plot(sol)

@@ -1,5 +1,6 @@
 using DifferentialEquations, LinearAlgebra
-using StaticArrays, SparseArrays, BenchmarkTools
+using StaticArrays, SparseArrays
+using BenchmarkTools, Test
 using Plots
 
 # function lorenz!(du,u,p,t)
@@ -24,15 +25,15 @@ end
 function L(p)
 
     α, δ = p
-    return [α 0.0;
-            0.0 -δ]
+    return @SMatrix [α 0.0;
+                    0.0 -δ]
 
 end
 
 function N(p)
 
     β, γ = p
-    return [0.0 -β;
+    return @SMatrix [0.0 -β;
              γ 0.0]
 
 end
@@ -40,17 +41,22 @@ end
 function F(p)
 
     τ = p
-    return (0.0/τ) .* [1.0 0.0;
-                       0.0 1.0]
+    return @SMatrix [0.0 0.0;
+                       0.0 0.0]
 
 end
 
+#! solve the equation dq = L(q) + N(q,q) + F(q)
 function glv!(du,u,p,t)
 
     # Generalise LV towards GQL
     α, β, δ, γ, τ = p
+
     # a = 0.0
+    # b = copy(u)
     b = L([α,δ]) * u
+
+    # c = copy()
     c = N([β,γ]) .* (u*u')
     # d = F([τ]) * u
 
@@ -60,11 +66,12 @@ function glv!(du,u,p,t)
 
 end
 
-u0 = [1.0,1.0]
-tspan = (0.0,30.0)
-p = [1.5,1.0,3.0,1.0,1.0]
+u0      = [1.0,1.0]
+p       = [1.5,1.0,3.0,1.0,1.0]
+
 prob = ODEProblem(glv!,u0,tspan,p)
-sol  = solve(prob,RK4(),adaptive=true)
+@benchmark @btime sol  = solve(prob,RK4(),adaptive=true)
+
 plot(sol,vars=(1))
 plot!(sol,vars=(2))
 

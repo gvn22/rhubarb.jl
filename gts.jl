@@ -1,5 +1,6 @@
 using DifferentialEquations, LinearAlgebra
-using StaticArrays, SparseArrays, BenchmarkTools
+using StaticArrays, SparseArrays
+using BenchmarkTools, Test
 using Plots
 
 # function lorenz!(du,u,p,t)
@@ -22,57 +23,55 @@ function lv!(du,u,p,t)
 end
 
 function L(p)
-    # calculate linear coefficient vector
-    α, β, δ, γ, τ = p
 
-    coeffs = [α 1.0;
-              0.0 -δ]
+    α, δ = p
+    return @SMatrix [α 0.0;
+                    0.0 -δ]
 
-    return coeffs
 end
 
 function N(p)
-    # calculate linear coefficient vector
-    α, β, δ, γ, τ = p
 
-    coeffs = [0.0 -β;
-              γ 0.0]
+    β, γ = p
+    return @SMatrix [0.0 -β;
+             γ 0.0]
 
-    return coeffs
 end
 
 function F(p)
-    # calculate a linear forcing term
-    α, β, δ, γ, τ = p
 
-    # start with 0 forcing
-    coeffs = (0.0/τ)*[1.0 0.0;
-                0.0 1.0]
+    τ = p
+    return @SMatrix [0.0 0.0;
+                       0.0 0.0]
 
-    return coeffs
 end
 
+#! solve the equation dq = L(q) + N(q,q) + F(q)
 function glv!(du,u,p,t)
-    # Generalisation of Lotka-Volterra -> towards GQL
-    # x, y = u
+
+    # Generalise LV towards GQL
     α, β, δ, γ, τ = p
 
     # a = 0.0
-    b = L(p) * u
-    c = N(p) .* (u * u')
-    d = F(p) * u
+    # b = copy(u)
+    b = L([α,δ]) * u
+
+    # c = copy()
+    c = N([β,γ]) .* (u*u')
+    # d = F([τ]) * u
 
     for i ∈ [1,2]
         du[i] = b[i] + sum(c[i,:])
-        # du[2] = dy = b[2] + c[2,1] + c[2,2]
     end
+
 end
 
-u0 = [1.0,1.0]
-tspan = (0.0,30.0)
-p = [1.5,1.0,3.0,1.0,1.0]
+u0      = [1.0,1.0]
+p       = [1.5,1.0,3.0,1.0,1.0]
+
 prob = ODEProblem(glv!,u0,tspan,p)
-sol  = solve(prob,RK4(),adaptive=true)
+@benchmark @btime sol  = solve(prob,RK4(),adaptive=true)
+
 plot(sol,vars=(1))
 plot!(sol,vars=(2))
 

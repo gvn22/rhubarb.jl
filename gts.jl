@@ -2,6 +2,7 @@ using DifferentialEquations, LinearAlgebra
 using StaticArrays, SparseArrays
 using BenchmarkTools, Test
 using Plots
+using Einsum
 
 # function lorenz!(du,u,p,t)
 #     # Lorenz Equations
@@ -70,17 +71,58 @@ function nl!(du,u,p,t)
 
     β, ν = p
 
-    # Rossby
-    b = [β*k^2/(k^2 + l^2) for k in 1:3, l in 1:3]
-    du .= b.*u
+    nx = 3
+    ny = 3
+
+    # Rossby + diffusion
+    b = [im*β*k^2/(k^2 + l^2) - ν*(k^2 + l^2) for k in 1:nx, l in 1:ny]
+    b[1,1] = 0.0
+
+    c = zeros(ComplexF64,(nx,ny,nx,ny,nx,ny))
+    for k in 1:nx
+        for l in 1:ny
+            for m in 1:nx
+                for n in 1:ny
+
+                    i = k + m
+                    j = l + n
+
+                    if i <= nx && j <= ny
+                        c[i,j,k,l,m,n] = - Float64(((k^2 + l^2)^2 - (m^2 + n^2)^2)/(i^2 + j^2))
+                        # @show i,j,k,l,m,n,c[i,j,k,l,m,n]
+                    end
+
+                    i = k - m
+                    j = l - n
+
+                    if i > 1 && j > 1
+                        c[i,j,k,l,m,n] = - Float64(((k^2 + l^2)^2 - (m^2 + n^2)^2)/(i^2 + j^2))
+                        # @show i,j,k,l,m,n
+                    end
+
+                end
+            end
+        end
+    end
+
+    # @show c
+    du .= b .* u
+    # @einsum du[i,j] = b[i,j]*u[i,j] + c[i,j,k,l,m,n]*u[k,l]*u[m,n]
+    @einsum du[i,j] += c[i,j,k,l,m,n]*u[k,l]*u[m,n]
 
 end
 
-u0 = rand(3,3)
-p = [1.0,1.0]
+nx = 3
+ny = 3
 
-tspan   = (0.0,1.0)
+u0 = rand(ComplexF64,(nx,ny))
+p = [1.0,0.0001]
+
+tspan   = (0.0,1000.0)
 prob = ODEProblem(nl!,u0,tspan,p)
 sol  = solve(prob,RK4(),adaptive=true)
 
+@show size(sol)[3]
 plot(sol)
+r = [(sol[2,1,i]) for i in 1:size(sol)[3]]
+plot(r)

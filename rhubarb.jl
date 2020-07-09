@@ -4,7 +4,7 @@ using Einsum
 
 function nl_eqs!(du,u,p,t)
 
-    # resolution, Coriolis parameter, kinematic viscosity
+    # parameters
     nx, ny, β, ν  = p
     nx,ny = Int64(nx), Int64(ny)
 
@@ -30,8 +30,8 @@ function nl_eqs!(du,u,p,t)
 
     end
 
-    # tendency equation (optimise later using staticarrays)
-    @einsum du[i,j] = -ω[i,j]*u[i,j] - v[i,j]*u[i,j] + A[i,j,k,l,m,n]*u[k,l]*u[m,n]
+    # tendency equation (optimise later using sparsearrays)
+    @einsum du[i,j] = - ω[i,j]*u[i,j] - v[i,j]*u[i,j] + A[i,j,k,l,m,n]*u[k,l]*u[m,n]
 
 end
 
@@ -42,4 +42,4 @@ tspan = (0.0,1000.0)
 prob = ODEProblem(nl_eqs!,u0,tspan,p)
 sol  = solve(prob,Tsit5(),adaptive=true,stiff=true)
 
-plot(sol,vars=[1,4],linewidth=1,legend=false)
+plot(sol,linewidth=1,legend=false)

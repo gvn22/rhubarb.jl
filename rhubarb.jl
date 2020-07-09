@@ -33,10 +33,13 @@ function nl_eqs!(du,u,p,t)
 
     end
 
-    @show size(du), size(ω), size(v), size(A)
+    # c = zeros(ComplexF64,nx,2*ny-1)
+    # @einsum c[i,j] =  A[i,j,k,l,m,n]*u[k,l]*u[m,n]
+
+    @show t
+    # @show size(du), size(ω), size(v), size(A)
     # tendency equation (optimise later using sparsearrays)
     du .= - ω .* u - v .* u
-    # @einsum du[i,j] = - ω[i,j]*u[i,j] - v[i,j]*u[i,j] + A[i,j,k,l,m,n]*u[k,l]*u[m,n]
 
 end
 
@@ -47,6 +50,6 @@ p = [nx,ny,1.0e-2,5e-4]
 
 tspan = (0.0,1000.0)
 prob = ODEProblem(nl_eqs!,u0,tspan,p)
-sol  = solve(prob,Tsit5(),adaptive=true,stiff=true)
+sol  = solve(prob,BS3(),adaptive=true)
 
 plot(sol,linewidth=1,legend=false)

@@ -8,11 +8,14 @@ function nl_eqs!(du,u,p,t)
     nx, ny, β, ν  = p
     nx,ny = Int64(nx), Int64(ny)
 
-    spanx = 0:1:nx-1
-    spany = -ny+1:1:ny-1
+    spanx = range(0,nx-1,step=1)
+    spany = range(-ny+1,ny-1,step=1)
 
     # linear coefficients
+    ω = zeros(ComplexF64,nx,2*ny-1)
     ω = [kx|ky ≠ 0 ? im*β*kx^2/(kx^2 + ky^2) : 0.0 + im*0.0 for kx=spanx, ky=spany]
+
+    v = zeros(ComplexF64,nx,2*ny-1)
     v = [ComplexF64(ν*(kx^2 + ky^2)) for kx=spanx, ky=spany]
 
     # non-linear coefficients
@@ -24,19 +27,23 @@ function nl_eqs!(du,u,p,t)
 
     for triad ∈ triads
 
-        kx,ky,px,py,qx,qy = [Float64(triad[i]) for i=1:6]
+        kx,ky,px,py,qx,qy = [Float64(mode) for mode ∈ triad]
         kpq = CartesianIndex(triad) + CartesianIndex(1,ny,1,ny,1,ny)
         A[kpq] = -1.0/(4.0*pi)*(px*qy - py*qx)*(px^2 + py^2 - qx^2 - qy^2)/(kx^2 + ky^2)
 
     end
 
+    @show size(du), size(ω), size(v), size(A)
     # tendency equation (optimise later using sparsearrays)
-    @einsum du[i,j] = - ω[i,j]*u[i,j] - v[i,j]*u[i,j] + A[i,j,k,l,m,n]*u[k,l]*u[m,n]
+    du .= - ω .* u - v .* u
+    # @einsum du[i,j] = - ω[i,j]*u[i,j] - v[i,j]*u[i,j] + A[i,j,k,l,m,n]*u[k,l]*u[m,n]
 
 end
 
-u0 = rand(ComplexF64,nx,2*ny-1)
-p = [2,2,1.0e-4,1.5e-5]
+nx,ny = 2,3
+
+u0 = randn(ComplexF64,nx,2*ny-1)
+p = [nx,ny,1.0e-2,5e-4]
 
 tspan = (0.0,1000.0)
 prob = ODEProblem(nl_eqs!,u0,tspan,p)

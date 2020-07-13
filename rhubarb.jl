@@ -40,19 +40,82 @@ function nl_eqs!(du,u,p,t)
                 if (kx|ky ≠ 0 && px|py ≠ 0 && qx|qy ≠ 0)
                 && (kx == px - qx && ky == py - qy)]
 
-    triads = vcat(tri_adds,tri_difs)
+    # triads = vcat(tri_adds,tri_difs)
     # @show length(triads),3*5*3*5*3*5*2
+    Kx  = Int[]
+    Ky  = Int[]
+    Cp  = SparseMatrixCSC{Float64}[]
 
-    # for triad ∈ triads
+
+    Pv  = Int[]
+    Qv  = Int[]
+    A   = Float64[]
+    for (i,triad) ∈ enumerate(tri_adds)
+
+        kx,ky = triad.k[1] + 1,triad.k[2] + ny
+        px,py = triad.p[1] + 1,triad.p[2] + ny
+        qx,qy = triad.q[1] + 1,triad.q[2] + ny
+
+        push!(Pv,px*(2*ny-1) + py)
+        push!(Qv,qx*(2*ny-1) + qy)
+
+        akpq = -1.0/(4.0*pi)*(px*qy - py*qx)*(px^2 + py^2 - qx^2 - qy^2)/(kx^2 + ky^2)
+
+        push!(A, akpq)
+
+        # @show i,triad,px
+
+        next = i < length(tri_adds) ? tri_adds[i + 1] : nothing
+        if(next == nothing || next.k ≠ triad.k)
+
+            Cp = sparse(Pv,Qv,A,(nx+1)*(2*ny),(nx+1)*(2*ny))
+
+            Pv = Int[]
+            Qv = Int[]
+
+            A = Float64[]
+
+            push!(Kx,kx)
+            push!(Ky,ky)
+
+        end
+
+    end
+
+    @show sizeof(Cp)
+    # @show unique(x->x.k,tri_adds)
+    # for triad ∈ tri_adds
     #
-    #     kx,ky,px,py,qx,qy = [Float64(mode) for mode ∈ triad]
-    #     kpq = CartesianIndex(triad) + CartesianIndex(1,ny,1,ny,1,ny)
+    #     for
+    #         kx,ky = triad.k
+    #         px,py = triad.p
+    #         qx,qy = triad.q
     #
-    #     # kx,ky = assign here rather than use indices
-    #     A[kpq] = -1.0/(100.0)*(px*qy - py*qx)*(px^2 + py^2 - qx^2 - qy^2)/(kx^2 + ky^2)
+    #         push!(Pv,px*(2*ny-1) + py)
+    #         push!(Qv,qx*(2*ny-1) + qy)
+    #
+    #         akpq = -1.0/(4.0*pi)*(px*qy - py*qx)*(px^2 + py^2 - qx^2 - qy^2)/(kx^2 + ky^2)
+    #
+    #         push!(Cpv, akpq)
+    #     end
+    #     push!(Cp,sparse(A)
     #
     # end
     #
+    # Kx = []
+    # Ky = []
+    # Cp = SparseMatrixCSC{ComplexF64}[]
+    #
+    # for triad ∈ tri_adds
+    #
+    #     kx,ky = triad.k
+    #
+    #     Kxv[i] = kx
+    #     Kyv[i] = ky
+    #
+    #
+    # end
+
     # c = zeros(ComplexF64,nx,2*ny-1)
     # @einsum c[i,j] := A[i,j,k,l,m,n]*u[k,l]*u[m,n]
     #

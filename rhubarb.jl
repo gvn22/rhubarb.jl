@@ -41,15 +41,14 @@ function nl_eqs!(du,u,p,t)
                 && (kx == px - qx && ky == py - qy)]
 
     # triads = vcat(tri_adds,tri_difs)
-    # @show length(triads),3*5*3*5*3*5*2
+
     Kx  = Int[]
     Ky  = Int[]
-    Cp  = SparseMatrixCSC{Float64}[]
-
+    Cp  = SparseMatrixCSC{ComplexF64}[]
 
     Pv  = Int[]
     Qv  = Int[]
-    A   = Float64[]
+    A   = ComplexF64[]
     for (i,triad) ∈ enumerate(tri_adds)
 
         kx,ky = triad.k[1] + 1,triad.k[2] + ny
@@ -63,8 +62,6 @@ function nl_eqs!(du,u,p,t)
 
         push!(A, akpq)
 
-        # @show i,triad,px
-
         next = i < length(tri_adds) ? tri_adds[i + 1] : nothing
         if(next == nothing || next.k ≠ triad.k)
 
@@ -73,7 +70,7 @@ function nl_eqs!(du,u,p,t)
             Pv = Int[]
             Qv = Int[]
 
-            A = Float64[]
+            A = ComplexF64[]
 
             push!(Kx,kx)
             push!(Ky,ky)
@@ -82,7 +79,25 @@ function nl_eqs!(du,u,p,t)
 
     end
 
-    @show sizeof(Cp)
+    kv = Int[]
+    nlv = ComplexF64[]
+    c = similar(u)
+
+    for (i,k) in enumerate(zip(Kx,Ky))
+
+        push!(kv, k[1]*(2*ny - 1) + k[2])
+
+        mul!(c,Cp[i],u)
+        push!(nlv,dot(c,u))
+
+    end
+
+    nl = sparsevec(kv,nlv,(nx+1)*(2*ny))
+    du .= nl
+
+    # Bp = [dot(mul!(B,c,u),u) for c in Cp]
+
+    # println ("")
     # @show unique(x->x.k,tri_adds)
     # for triad ∈ tri_adds
     #
@@ -133,19 +148,19 @@ end
 # end
 
 # initialise problem
-nx,ny = 3,3
+nx,ny = 2,2
 
-u0      = randn(ComplexF64,nx,2*ny-1)
+u0      = randn(ComplexF64,(nx+1)*(2*ny))
 p       = [nx,ny,1.0e-2,5e-3]
-tspan   = (0.0,1.0)
+tspan   = (0.0,10.0)
 
 # choose equations and solve
 prob = ODEProblem(nl_eqs!,u0,tspan,p)
-sol  = solve(prob,RK4(),adaptive=false,dt=0.01,maxiters=10)
+sol  = solve(prob,RK4(),adaptive=true)
 
 # concatenate conjugate matrix
 # transforum to spatial coordinates
 
 # plot
-# pyplot()
-# plot(sol,linewidth=1,legend=false)
+pyplot()
+plot(sol,linewidth=1,legend=false)

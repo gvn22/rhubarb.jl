@@ -1,5 +1,5 @@
 using DifferentialEquations
-using Plots, PyPlot
+using Plots
 using LinearAlgebra,SparseArrays
 
 function l_coeffs(β,ν,spanx,spany)
@@ -73,15 +73,11 @@ end
 
 function nl_eqs!(du,u,p,t)
 
-    nx, ny, β, ν  = p
-    nx,ny = Int64(nx), Int64(ny)
+    nx, ny, β, ν, Kp, Cp, Km, Cm  = p
+
+    nx,ny   = Int64(nx), Int64(ny)
     spanx   = range(0,nx-1,step=1)
     spany   = range(-ny+1,ny-1,step=1)
-
-    E = sum(kx|ky ≠ 0 ? u[kx*(2*ny - 1) + ky+ny]^2/(kx^2 + ky^2) : 0.0 for ky=spany for kx=spanx)
-    Z = sum(kx|ky ≠ 0 ? u[kx*(2*ny - 1) + ky+ny]^2 : 0.0 for ky=spany for kx=spanx)
-
-    @show E,Z
 
     # modes: k = p + q
     Bp      = ComplexF64[]
@@ -89,6 +85,7 @@ function nl_eqs!(du,u,p,t)
 
     for (mode,matrix) in zip(Kp,Cp)
 
+        @show mode, matrix
         mul!(temp,matrix,u)
         push!(Bp,dot(temp,u))
 
@@ -103,7 +100,9 @@ function nl_eqs!(du,u,p,t)
 
     for (mode,matrix) in zip(Km,Cm)
 
-        mul!(temp,matrix,conj!(u))
+        @show mode, matrix
+
+        mul!(temp,matrix,conj(u))
         push!(Bm,dot(temp,u))
 
     end
@@ -113,19 +112,20 @@ function nl_eqs!(du,u,p,t)
 
     du .= Σp + Σm
 
-    # q = u + β
-    # @show Γ2
+    E = sum(kx|ky ≠ 0 ? u[kx*(2*ny - 1) + ky+ny]*conj(u[kx*(2*ny - 1) + ky+ny])/(kx^2 + ky^2) : 0.0 for ky=spany for kx=spanx)
+    Z = sum(kx|ky ≠ 0 ? u[kx*(2*ny - 1) + ky+ny]*conj(u[kx*(2*ny - 1) + ky+ny]) : 0.0 for ky=spany for kx=spanx)
+
+    @show E,Z
 
 end
 
 nx,ny   = 2,2
 β,ν     = 1.0e-3,5e-3
-p       = [nx,ny,β,ν]
 
 X,Y     = nx,2*ny - 1
 u0      = randn(ComplexF64,X*Y)
 
-tspan   = (0.0,10.0)
+tspan   = (0.0,100.0)
 
 spanx   = range(0,nx-1,step=1)
 spany   = range(-ny+1,ny-1,step=1)
@@ -145,6 +145,9 @@ Kp,Cp   = nl_coeffs(Δp,+1)
             && (kx == px - qx && ky == py - qy)]
 
 Km,Cm   = nl_coeffs(Δm,-1)
+
+p       = [nx,ny,β,ν,Kp,Cp,Km,Cm]
+
 # @show Δm,Km
 
 # allΔs   = vcat(Δp,Δm)
@@ -152,8 +155,8 @@ Km,Cm   = nl_coeffs(Δm,-1)
 
 
 # @show Δm
-# prob    = ODEProblem(nl_eqs!,u0,tspan,p)
-# sol     = solve(prob,Tsit5(),adaptive=true)
+prob    = ODEProblem(nl_eqs!,u0,tspan,p)
+sol     = solve(prob,Tsit5(),adaptive=true)
 
-# pyplot()
-# plot(sol,linewidth=1,legend=false)
+pyplot()
+Plots.plot(sol,linewidth=1,legend=false)

@@ -1,6 +1,6 @@
 using DifferentialEquations
 using Plots, PyPlot
-using Einsum, LinearAlgebra
+using LinearAlgebra,SparseArrays
 
 function l_coeffs(β,ν,spanx,spany)
 
@@ -15,7 +15,7 @@ function l_coeffs(β,ν,spanx,spany)
 
 end
 
-function nl_coeffs(triads)
+function nl_coeffs(triads,pm)
 
     # println("Computing coefficients...")
     function pos(p)
@@ -30,33 +30,41 @@ function nl_coeffs(triads)
     As  = ComplexF64[]
     for (i,triad) ∈ enumerate(triads)
 
-        kx,ky   = ComplexF64(triad.k[1]),ComplexF64(triad.k[2])
-        px,py   = ComplexF64(triad.p[1]),ComplexF64(triad.p[2])
-        qx,qy   = ComplexF64(triad.q[1]),ComplexF64(triad.q[2])
+        K,P,Q = triad.k ,triad.p, triad.q
+
+        kx,ky   = ComplexF64(K[1]),ComplexF64(K[2])
+        px,py   = ComplexF64(P[1]),ComplexF64(P[2])
+        qx,qy   = ComplexF64(Q[1]),ComplexF64(Q[2])
         # akpq    = -0.5*((kx*py - ky*px)/(px^2 + py^2) + (kx*qy - ky*qx)/(qx^2 + qy^2))
-        akpq    = 0.5*((px*qy - qx*py)*(qx^2 + qy^2 - px^2 - py^2)/(kx^2 + ky^2))
+        akpq    = pm*0.5*((px*qy - qx*py)*(qx^2 + qy^2 - px^2 - py^2)/(kx^2 + ky^2))
 
-        P,Q = triad.p, triad.q
-
+        # @show kx,ky, akpq
+        @show K,P,Q
         push!(Ps,pos(P))
         push!(Qs,pos(Q))
-        push!(As, akpq)
+        push!(As,akpq)
 
         next = i < length(triads) ? triads[i + 1] : nothing
         if(next == nothing || next.k ≠ triad.k)
 
+            println("Building A...", K, "->", pos(K))
             A = sparse(Ps,Qs,As,nx*(2*ny-1),nx*(2*ny-1))
+
+            push!(Ks,pos(K))
+            push!(Cs,A)
 
             Ps = Int[]
             Qs = Int[]
             As = ComplexF64[]
 
-            K = triad.k
-            push!(Ks,pos(K))
-            push!(Cs,A)
-
         end
 
+    end
+
+    @show Ks
+
+    for c in Cs
+        @show c
     end
 
     return Ks,Cs
@@ -110,7 +118,7 @@ function nl_eqs!(du,u,p,t)
 
 end
 
-nx,ny   = 3,3
+nx,ny   = 2,2
 β,ν     = 1.0e-3,5e-3
 p       = [nx,ny,β,ν]
 
@@ -123,29 +131,29 @@ spanx   = range(0,nx-1,step=1)
 spany   = range(-ny+1,ny-1,step=1)
 
 Δp      =  [(k=(kx,ky),p=(px,py),q=(qx,qy))
-            for qx=spanx, qy=spany, px=spanx, py=spany, kx=spanx, ky=spany
+            for qx=spanx for qy=spany for px=spanx for py=spany for kx=spanx for ky=spany
             if (kx|ky ≠ 0 && px|py ≠ 0 && qx|qy ≠ 0)
             && (kx == px + qx && ky == py + qy)]
-
-Kp,Cp   = nl_coeffs(Δp)
+sort!(Δp,by=first)
 # @show Δp,Kp
+
+Kp,Cp   = nl_coeffs(Δp,+1)
 
 Δm      =  [(k = (kx,ky),p = (px,py), q = (qx,qy))
             for qx=spanx, qy=spany, px=spanx, py=spany, kx=spanx, ky=spany
             if (kx|ky ≠ 0 && px|py ≠ 0 && qx|qy ≠ 0)
-            && (kx == px - qx && ky == py + qy)]
+            && (kx == px - qx && ky == py - qy)]
 
-Km,Cm   = nl_coeffs(Δm)
+Km,Cm   = nl_coeffs(Δm,-1)
 # @show Δm,Km
 
-allΔs   = vcat(Δp,Δm)
+# allΔs   = vcat(Δp,Δm)
 # @show unique(x->x.k,tri_adds)
 
-@show Δp
 
-@show Δm
-prob    = ODEProblem(nl_eqs!,u0,tspan,p)
-sol     = solve(prob,Tsit5(),adaptive=true)
+# @show Δm
+# prob    = ODEProblem(nl_eqs!,u0,tspan,p)
+# sol     = solve(prob,Tsit5(),adaptive=true)
 
 # pyplot()
 # plot(sol,linewidth=1,legend=false)

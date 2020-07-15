@@ -68,14 +68,14 @@ function nl_eqs!(du,u,p,t)
         temp = fill!(similar(u),0)
 
         # mul!(temp,c',u)
-        mul!(temp,transpose(c),u)
         # Σp[k] = dot(temp,u)
-
-        Σp[k] = BLAS.dotu(N,u,1,temp,1)
         # Σp[k] = dot(u,BLAS.gemv('T',c,u))
+
+        mul!(temp,transpose(c),u)
+        Σp[k] = BLAS.dotu(N,u,1,temp,1)
+
     end
 
-    # @show Σp
     # modes: k = p - q
     for (k,c) ∈ Cm
 
@@ -131,12 +131,6 @@ Cp      = nl_coeffs(Δp,+1)
 sort!(Δm,by=first)
 
 Cm      = nl_coeffs(Δm,-1)
-
-# @show Δp,Kp
-# @show Δm,Km
-# allΔs   = vcat(Δp,Δm)
-# @show unique(x->x.k,tri_adds)
-# @show Δm
 
 # setup and solve equations
 u0      = randn(ComplexF64,nx*(2*ny-1))

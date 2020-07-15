@@ -1,4 +1,5 @@
 using DifferentialEquations
+using BenchmarkTools
 using Plots
 using LinearAlgebra,SparseArrays
 
@@ -39,7 +40,7 @@ function nl_coeffs(triads,pm)
         akpq    = pm*0.5*((px*qy - qx*py)*(qx^2 + qy^2 - px^2 - py^2)/(kx^2 + ky^2))
 
         # @show kx,ky, akpq
-        @show K,P,Q
+        # @show K,P,Q
         push!(Ps,pos(P))
         push!(Qs,pos(Q))
         push!(As,akpq)
@@ -47,7 +48,7 @@ function nl_coeffs(triads,pm)
         next = i < length(triads) ? triads[i + 1] : nothing
         if(next == nothing || next.k ≠ triad.k)
 
-            println("Building A...", K, "->", pos(K))
+            # println("Building A...", K, "->", pos(K))
             A = sparse(Ps,Qs,As,nx*(2*ny-1),nx*(2*ny-1))
 
             push!(Ks,pos(K))
@@ -61,11 +62,11 @@ function nl_coeffs(triads,pm)
 
     end
 
-    @show Ks
+    # @show Ks
 
-    for c in Cs
-        @show c
-    end
+    # for c in Cs
+        # @show c
+    # end
 
     return Ks,Cs
 
@@ -76,8 +77,6 @@ function nl_eqs!(du,u,p,t)
     nx, ny, β, ν, Kp, Cp, Km, Cm  = p
 
     nx,ny   = Int64(nx), Int64(ny)
-    spanx   = range(0,nx-1,step=1)
-    spany   = range(-ny+1,ny-1,step=1)
 
     # modes: k = p + q
     Bp      = ComplexF64[]
@@ -85,7 +84,7 @@ function nl_eqs!(du,u,p,t)
 
     for (mode,matrix) in zip(Kp,Cp)
 
-        @show mode, matrix
+        # @show mode, matrix
         mul!(temp,matrix,u)
         push!(Bp,dot(temp,u))
 
@@ -96,11 +95,10 @@ function nl_eqs!(du,u,p,t)
 
     # modes: k = p - q
     Bm      = ComplexF64[]
-    temp    = similar(u)
 
     for (mode,matrix) in zip(Km,Cm)
 
-        @show mode, matrix
+        # @show mode, matrix
 
         mul!(temp,matrix,conj(u))
         push!(Bm,dot(temp,u))
@@ -110,12 +108,15 @@ function nl_eqs!(du,u,p,t)
     Σm = sparsevec(Km,Bm,(nx)*(2*ny-1))
     # @show Km,Σm
 
-    du .= Σp + Σm
+    du .= Σp .+ Σm
 
-    E = sum(kx|ky ≠ 0 ? u[kx*(2*ny - 1) + ky+ny]*conj(u[kx*(2*ny - 1) + ky+ny])/(kx^2 + ky^2) : 0.0 for ky=spany for kx=spanx)
-    Z = sum(kx|ky ≠ 0 ? u[kx*(2*ny - 1) + ky+ny]*conj(u[kx*(2*ny - 1) + ky+ny]) : 0.0 for ky=spany for kx=spanx)
+    spanx   = range(0,nx-1,step=1)
+    spany   = range(-ny+1,ny-1,step=1)
 
-    @show E,Z
+    E = sum(kx|ky ≠ 0 ? abs(u[kx*(2*ny - 1) + ky+ny])^2/(kx^2 + ky^2) : 0.0 for ky=spany for kx=spanx)
+    Z = sum(abs(u[kx*(2*ny - 1) + ky+ny])^2 for ky=spany for kx=spanx)
+
+    @show t, E,Z
 
 end
 
@@ -143,6 +144,7 @@ Kp,Cp   = nl_coeffs(Δp,+1)
             for qx=spanx, qy=spany, px=spanx, py=spany, kx=spanx, ky=spany
             if (kx|ky ≠ 0 && px|py ≠ 0 && qx|qy ≠ 0)
             && (kx == px - qx && ky == py - qy)]
+sort!(Δm,by=first)
 
 Km,Cm   = nl_coeffs(Δm,-1)
 
@@ -153,10 +155,9 @@ p       = [nx,ny,β,ν,Kp,Cp,Km,Cm]
 # allΔs   = vcat(Δp,Δm)
 # @show unique(x->x.k,tri_adds)
 
-
 # @show Δm
 prob    = ODEProblem(nl_eqs!,u0,tspan,p)
-sol     = solve(prob,Tsit5(),adaptive=true)
+sol = solve(prob,Tsit5(),adaptive=true,reltol=1e-6)
 
 pyplot()
 Plots.plot(sol,linewidth=1,legend=false)

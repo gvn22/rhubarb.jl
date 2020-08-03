@@ -1,4 +1,4 @@
-using DifferentialEquations,LinearAlgebra,SparseArrays,BenchmarkTools
+using DifferentialEquations,LinearAlgebra
 using Plots; plotly()
 
 function nl_coeffs(X,Y,M,N)

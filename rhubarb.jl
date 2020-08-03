@@ -1,149 +1,138 @@
 using DifferentialEquations,LinearAlgebra
 using Plots; plotly()
 
-function nl_coeffs(X,Y,M,N)
-
-    function pos(p)
-        return p[1]*(2*N+1) + (p[2] + N + 1)
-    end
+function coeffs(X,Y,M,N)
 
     cx,cy = 2.0*pi/X,2.0*pi/Y
 
-    Δppq = [(k=(kx,ky),p=(px,py),q=(qx,qy))
-            for kx=0:M for ky=-N:N
-            for px=0:M for py=-N:N
-            for qx=0:M for qy=-N:N
-            if (kx|ky ≠ 0 && px|py ≠ 0 && qx|qy ≠ 0)
-            && (kx == px + qx && ky == py + qy)]
+    println("Cp...")
 
-    println("Cppq...")
-    Cppq = Float64[]
-    for Δ ∈ Δppq
+    Δp = []
+    Cp = Float64[]
+    for m1 ∈ 0:1:M
+        for n1 ∈ -N:1:N
+            for m2 ∈ 0:1:M-m1
+                for n2 ∈ -N:1:N
 
-        k,p,q   = pos(Δ.k),pos(Δ.p),pos(Δ.q)
-        kx,ky   = cx*Float64(Δ.k[1]),cy*Float64(Δ.k[2])
-        px,py   = cx*Float64(Δ.p[1]),cy*Float64(Δ.p[2])
-        qx,qy   = cx*Float64(Δ.q[1]),cy*Float64(Δ.q[2])
+                    if !(m1|n1 == 0) && !(m2|n2 == 0)
 
-        # c = 0.5*(px*qy - qx*py)*((qx^2 + qy^2) - (px^2 + py^2))/(kx^2 + ky^2)
-        c = (px*qy - qx*py)/(px^2 + py^2)
+                        m = m1 + m2
+                        n = n1 + n2
 
-        push!(Cppq,c)
-        @show Δ.k,Δ.p,Δ.q,c
+                        if (m >= 0 && m <= M) && (n >= -N && n <= N) && !(m|n == 0)
 
+                            println("m1 = ",m1,", n1 = ",n1,", m2 = ",m2,", n2 = ",n2)
+
+                            push!(Δp,[m,n,m1,n1,m2,n2])
+
+                            c = - (cx*m1*cy*n2 - cx*m2*cy*n1)/(cx^2*m1^2 + cy^2*n1^2)
+
+                            @show c
+                            push!(Cp,c)
+
+                        end
+
+                    end
+
+                end
+            end
+        end
     end
 
-    Δpmq = [(k=(kx,ky),p=(px,py),q=(qx,qy))
-            for kx=0:M for ky=-N:N
-            for px=1:M for py=-N:N
-            for qx=1:M for qy=-N:N
-            if (kx|ky ≠ 0 && px|py ≠ 0 && qx|qy ≠ 0)
-            && (kx == px - qx && ky == py - qy)]
+    @show Δp
 
-    println("Cpmq...")
-    Cpmq = Float64[]
-    for Δ ∈ Δpmq
+    println("Cm...")
 
-        k,p,q = pos(Δ.k),pos(Δ.p),pos(Δ.q)
-        kx,ky   = cx*Float64(Δ.k[1]),cy*Float64(Δ.k[2])
-        px,py   = cx*Float64(Δ.p[1]),cy*Float64(Δ.p[2])
-        qx,qy   = cx*Float64(Δ.q[1]),cy*Float64(Δ.q[2])
+    Δm = []
+    Cm = Float64[]
+    for m1 ∈ 1:1:M
+        for n1 ∈ -N:1:N
+            for m2 ∈ 1:1:m1
+                for n2 ∈ -N:1:N
 
-        # c = - 0.5*(px*qy - qx*py)*((qx^2 + qy^2) - (px^2 + py^2))/(kx^2 + ky^2)
-        c = - (px*qy - qx*py)/(px^2 + py^2)
+                    if !(m1|n1 == 0) && !(m2|n2 == 0)
 
-        push!(Cpmq,c)
-        @show Δ.k,Δ.p,Δ.q,c
+                        m = m1 - m2
+                        n = n1 - n2
 
+                        if (m >= 0 && m <= M) && (n >= -N && n <= N) && !(m|n == 0)
+
+                            println("m1 = ",m1,", n1 = ",n1,", m2 = ",m2,", n2 = ",n2)
+
+                            push!(Δm,[m,n,m1,n1,m2,n2])
+
+                            c = (cx*m1*cy*n2 - cx*m2*cy*n1)/(cx^2*m1^2 + cy^2*n1^2)
+                            d = (cx*m2*cy*n1 - cx*m1*cy*n2)/(cx^2*m2^2 + cy^2*n2^2)
+
+                            @show c,d
+                            push!(Cm,c+d)
+
+                        end
+                    end
+
+                end
+            end
+        end
     end
 
-    Δmpq = [(k=(kx,ky),p=(px,py),q=(qx,qy))
-            for kx=0:M for ky=-N:N
-            for px=1:M for py=-N:N
-            for qx=1:M for qy=-N:N
-            if (kx|ky ≠ 0 && px|py ≠ 0 && qx|qy ≠ 0)
-            && (kx == - px + qx && ky == - py + qy)]
+    @show Δm
 
-    println("Cmpq...")
-    Cmpq = Float64[]
-    for Δ ∈ Δmpq
-
-        k,p,q   = pos(Δ.k),pos(Δ.p),pos(Δ.q)
-        kx,ky   = cx*Float64(Δ.k[1]),cy*Float64(Δ.k[2])
-        px,py   = cx*Float64(Δ.p[1]),cy*Float64(Δ.p[2])
-        qx,qy   = cx*Float64(Δ.q[1]),cy*Float64(Δ.q[2])
-
-        # c = - 0.5*(px*qy - qx*py)*((qx^2 + qy^2) - (px^2 + py^2))/(kx^2 + ky^2)
-        c = - (px*qy - qx*py)/(px^2 + py^2)
-
-        push!(Cmpq,c)
-        @show  Δ.k,Δ.p,Δ.q,c
-
-    end
-
-    # @show Δ1
-    # @show Δ2
-    # @show Δ3
-    return zip(Δppq,Cppq),zip(Δpmq,Cpmq),zip(Δmpq,Cmpq)
+    return zip(Δp,Cp),zip(Δm,Cm)
 
 end
 
 function nl_eqs!(du,u,p,t)
 
-    X, Y, nx, ny, C1, C2, C3  = p
+    X, Y, nx, ny, Cp, Cm  = p
 
-    function ind(x)
-        return div(x-1,2*ny-1),mod(x-1,2*ny-1)-ny+1
+    function pos(a,b)
+        return a*(2*ny-1) + (b + ny)
     end
 
-    dkx,dky = 2.0*pi/X,2.0*pi/Y
+    dζ = fill!(similar(u),0)
 
-    # E = sum(abs(u[k])^2*((ind(k)[1]*dkx)^2 + (ind(k)[2]*dky)^2) for k ∈ 1:nx*(2*ny-1))
-    # Z = sum(abs(u[k])^2 for k ∈ 1:nx*(2*ny-1))
-    #
-    # @show t, E,Z
+    println("Cp...")
 
-    N = ny - 1
-    function pos(p)
-        return p[1]*(2*N+1) + (p[2] + N + 1)
-    end
+    for (Δ,C) ∈ Cp
 
-    dψ = fill!(similar(u),0)
-    # @show du
-    for (Δ,C) ∈ C1
+        @show Δ, C
+        k,p,q     = pos(Δ[1],Δ[2]),pos(Δ[3],Δ[4]),pos(Δ[5],Δ[6])
 
-        k,p,q   = pos(Δ.k),pos(Δ.p),pos(Δ.q)
-        dψ[k]   += C*u[p]*u[q]
+        dζ[k]   = dζ[k] + C*u[p]*u[q]
+        println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*u[q], "\n")
 
     end
 
-    for (Δ,C) ∈ C2
+    println("Cm...")
 
-        k,p,q   = pos(Δ.k),pos(Δ.p),pos(Δ.q)
-        dψ[k]   += C*u[p]*conj(u[q])
+    for (Δ,C) ∈ Cm
+
+        @show Δ, C
+
+        k,p,q   = pos(Δ[1],Δ[2]),pos(Δ[3],Δ[4]),pos(Δ[5],Δ[6])
+
+        dζ[k]   = dζ[k] + C*u[p]*conj(u[q])
+        println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*conj(u[q]), "\n")
+
+        # @show dζ[k]
 
     end
 
-    for (Δ,C) ∈ C3
-
-        k,p,q   = pos(Δ.k),pos(Δ.p),pos(Δ.q)
-        dψ[k]   += C*conj(u[p])*u[q]
-
-    end
-
-    # @show t,dψ
-    du .= dψ
+    @show dζ
+    du .= dζ
 
 end
 
 Lx,Ly   = 2.0*pi,2.0*pi
 nx,ny   = 2,2
 
-C1,C2,C3= nl_coeffs(Lx,Ly,nx-1,ny-1)
+C1,C2   = coeffs(Lx,Ly,nx-1,ny-1)
 
-u0      = rand(ComplexF64,nx*(2*ny-1))
+# u0      = randn(ComplexF64,nx*(2*ny-1))
+
+u0      = [1.0,2.0,3.0,4.0,5.0,6.0]
 tspan   = (0.0,100.0)
-p       = [Lx,Ly,nx,ny,C1,C2,C3]
+p       = [Lx,Ly,nx,ny,C1,C2]
 
 prob    = ODEProblem(nl_eqs!,u0,tspan,p)
 sol     = solve(prob,RK4(),adaptive=true,progress=true)
@@ -157,23 +146,29 @@ Plots.plot!(sol,vars=(0,4),linewidth=2,label="(1,-1)")
 Plots.plot!(sol,vars=(0,5),linewidth=2,label="(1,0)")
 Plots.plot!(sol,vars=(0,6),linewidth=2,label="(1,1)")
 
-# f(x,y)  = (x,abs(y)^2)
-# Plots.plot(sol,vars=(f,0,1),linewidth=2,legend=true)
-# Plots.plot!(sol,vars=(f,0,2),linewidth=2,legend=true)
-# Plots.plot!(sol,vars=(f,0,3),linewidth=2,legend=true)
-# Plots.plot!(sol,vars=(f,0,4),linewidth=2,legend=true)
-# Plots.plot!(sol,vars=(f,0,5),linewidth=2,legend=true)
-# Plots.plot!(sol,vars=(f,0,6),linewidth=2,legend=true)
-#
-#
-#
 cx,cy = 2.0*pi/Lx,2.0*pi/Ly
+
 function ind(x)
     return div(x-1,2*ny-1),mod(x-1,2*ny-1)-ny+1
 end
 
-E = [sum(abs(u[k])^2/((ind(k)[1]*cx)^2 + (ind(k)[2]*cy)^2) for k=1:1:(nx-1)*(2*ny-1) if ind(k)[1]|ind(k)[2] ≠ 0) for u in sol.u]
-Plots.plot(E,linewidth=2,legend=true)
+E = zeros(Float64,length(sol.u))
+Z = zeros(Float64,length(sol.u))
 
-Z = [sum(abs(u[k])^2 for k=1:1:(nx-1)*(2*ny-1)) for u in sol.u]
+for (i,u) ∈ enumerate(sol.u)
+
+    for k ∈ eachindex(u)
+
+        m,n   = ind(k)
+        @show k,m,n
+        if !(m|n == 0)
+
+            E[i] += 0.5*abs(u[k])^2/(m^2 + n^2)
+            Z[i] += abs(u[k])^2
+        end
+
+    end
+end
+
+Plots.plot(E,linewidth=2,legend=true)
 Plots.plot(Z,linewidth=2,legend=true)

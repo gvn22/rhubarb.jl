@@ -1,18 +1,6 @@
 using DifferentialEquations,LinearAlgebra,SparseArrays,BenchmarkTools
 using Plots; plotly()
 
-function l_coeffs(β,ν)
-
-    ω = zeros(nx*(2*ny-1))
-    # ω = [kx|ky ≠ 0 ? im*β*kx^2/(kx^2 + ky^2) : 0.0 for kx=spanx for ky=spany]
-
-    v = zeros(nx*(2*ny-1))
-    # v = [ComplexF64(ν*(kx^2 + ky^2)) for kx=spanx for ky=spany]
-
-    return ω - v
-
-end
-
 function nl_coeffs(X,Y,M,N)
 
     function pos(p)
@@ -151,7 +139,6 @@ end
 Lx,Ly   = 2.0*pi,2.0*pi
 nx,ny   = 2,2
 
-# ωv      = lin_coeffs()
 C1,C2,C3= nl_coeffs(Lx,Ly,nx-1,ny-1)
 
 u0      = rand(ComplexF64,nx*(2*ny-1))

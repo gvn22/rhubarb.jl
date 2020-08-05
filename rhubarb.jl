@@ -1,4 +1,4 @@
-using DifferentialEquations,LinearAlgebra
+using DifferentialEquations
 using Plots; plotly()
 
 function nl_coeffs(X,Y,M,N)
@@ -93,25 +93,29 @@ function nl_eqs!(du,u,p,t)
         return a*(2*ny-1) + (b + ny)
     end
 
+    for i ∈ 1:ny
+        u[i] = u[ny + i]
+    end
+
     dq = fill!(similar(u),0)
 
     for (Δ,C) ∈ Cp
 
-        @show Δ, C
+        # @show Δ, C
         k,p,q   = pos(Δ[1],Δ[2]),pos(Δ[3],Δ[4]),pos(Δ[5],Δ[6])
         dq[k]   = dq[k] + C*u[p]*u[q]
-        println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*u[q], "\n")
+        # println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*u[q], "\n")
 
     end
 
     for (Δ,C) ∈ Cm
 
-        @show Δ, C
+        # @show Δ, C
 
         k,p,q   = pos(Δ[1],Δ[2]),pos(Δ[3],Δ[4]),pos(Δ[5],Δ[6])
         dq[k]   = dq[k] + C*u[p]*conj(u[q])
 
-        println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*conj(u[q]), "\n")
+        # println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*conj(u[q]), "\n")
 
     end
 
@@ -128,15 +132,15 @@ nx,ny   = 2,2
 
 C1,C2   = nl_coeffs(Lx,Ly,nx-1,ny-1)
 
-# u0      = randn(ComplexF64,nx*(2*ny-1))
+u0      = randn(ComplexF64,nx*(2*ny-1))
 
 u0      = [1.0,0.0,1.0,2.0,3.0,4.0]
-tspan   = (0.0,100.0)
+tspan   = (0.0,1000.0)
 p       = [nx,ny,C1,C2]
 
 prob    = ODEProblem(nl_eqs!,u0,tspan,p)
 sol     = solve(prob,RK4(),adaptive=true,progress=true,reltol=1e-6,abstol=1e-6)
-integrator = init(prob,RK4())
+# integrator = init(prob,RK4())
 # step!(integrator)
 
 Plots.plot(sol,vars=(0,1),linewidth=2,label="(0,-1)",legend=true)

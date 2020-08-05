@@ -21,14 +21,12 @@ function coeffs(X,Y,M,N)
 
                         if (m >= 0 && m <= M) && (n >= -N && n <= N) && !(m|n == 0)
 
-                            println("m1 = ",m1,", n1 = ",n1,", m2 = ",m2,", n2 = ",n2)
-
                             push!(Δp,[m,n,m1,n1,m2,n2])
 
                             c = - (cx*m1*cy*n2 - cx*m2*cy*n1)/(cx^2*m1^2 + cy^2*n1^2)
-
-                            @show c
                             push!(Cp,c)
+
+                            println("[",m,",",n,"] = [",m1,",",n1,"] + [",m2,",",n2,"] -> ",c)
 
                         end
 
@@ -55,16 +53,14 @@ function coeffs(X,Y,M,N)
                         m = m1 - m2
                         n = n1 - n2
 
-                        if (m >= 0 && m <= M) && (n >= -N && n <= N) && !(m|n == 0)
-
-                            println("m1 = ",m1,", n1 = ",n1,", m2 = ",m2,", n2 = ",n2)
+                        if (m >= 0 && m <= M) && (n >= -N && n <= N) && !(m == 0 && n <= 0)
 
                             push!(Δm,[m,n,m1,n1,m2,n2])
 
                             c = (cx*m1*cy*n2 - cx*m2*cy*n1)/(cx^2*m1^2 + cy^2*n1^2)
                             d = (cx*m2*cy*n1 - cx*m1*cy*n2)/(cx^2*m2^2 + cy^2*n2^2)
 
-                            @show c,d
+                            println("[",m,",",n,"] = [",m1,",",n1,"] + [",-m2,",",-n2,"] -> ",c,d)
                             push!(Cm,c+d)
 
                         end
@@ -120,6 +116,7 @@ function nl_eqs!(du,u,p,t)
 
     @show dζ
     du .= dζ
+    du[1] = du[3]
 
 end
 
@@ -130,12 +127,12 @@ C1,C2   = coeffs(Lx,Ly,nx-1,ny-1)
 
 # u0      = randn(ComplexF64,nx*(2*ny-1))
 
-u0      = [1.0,2.0,3.0,4.0,5.0,6.0]
+u0      = [1.0,0.0,1.0,2.0,3.0,4.0]
 tspan   = (0.0,100.0)
 p       = [Lx,Ly,nx,ny,C1,C2]
 
 prob    = ODEProblem(nl_eqs!,u0,tspan,p)
-sol     = solve(prob,RK4(),adaptive=true,progress=true)
+sol     = solve(prob,RK4(),adaptive=true,progress=true,reltol=1e-6,abstol=1e-6)
 # integrator = init(prob,RK4())
 # step!(integrator)
 
@@ -157,18 +154,19 @@ Z = zeros(Float64,length(sol.u))
 
 for (i,u) ∈ enumerate(sol.u)
 
-    for k ∈ eachindex(u)
+    for k ∈ ny+1:1:nx*(2*ny-1)
 
         m,n   = ind(k)
-        @show k,m,n
         if !(m|n == 0)
 
-            E[i] += 0.5*abs(u[k])^2/(m^2 + n^2)
+            E[i] += abs(u[k])^2/(m^2 + n^2)
             Z[i] += abs(u[k])^2
         end
 
     end
 end
 
-Plots.plot(E,linewidth=2,legend=true)
-Plots.plot(Z,linewidth=2,legend=true)
+Plots.plot(sol.t,E,linewidth=2,legend=true,xaxis="t",label="E (Energy)")
+Plots.plot!(sol.t,Z,linewidth=2,legend=true,xaxis="t",label="Z (Enstrophy)",yaxis="E, Z")
+
+@show sol.u

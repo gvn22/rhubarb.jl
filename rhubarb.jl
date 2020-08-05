@@ -10,9 +10,14 @@ function coeffs(X,Y,M,N)
     Δp = []
     Cp = Float64[]
     for m1 ∈ 0:1:M
-        for n1 ∈ -N:1:N
+
+        n1min = m1 == 0 ? 1 : -N
+        for n1 ∈ n1min:1:N
+
             for m2 ∈ 0:1:M-m1
-                for n2 ∈ -N:1:N
+
+                n2min = m2 == 0 ? 1 : -N
+                for n2 ∈ n2min:1:N
 
                     if !(m1|n1 == 0) && !(m2|n2 == 0)
 
@@ -43,10 +48,15 @@ function coeffs(X,Y,M,N)
 
     Δm = []
     Cm = Float64[]
-    for m1 ∈ 1:1:M
-        for n1 ∈ -N:1:N
-            for m2 ∈ 1:1:m1
-                for n2 ∈ -N:1:N
+    for m1 ∈ 0:1:M
+
+        n1min = m1 == 0 ? 1 : -N
+        for n1 ∈ n1min:1:N
+
+            for m2 ∈ 0:1:m1
+
+                n2min = m2 == 0 ? 1 : -N
+                for n2 ∈ n2min:1:N
 
                     if !(m1|n1 == 0) && !(m2|n2 == 0)
 
@@ -60,7 +70,7 @@ function coeffs(X,Y,M,N)
                             c = (cx*m1*cy*n2 - cx*m2*cy*n1)/(cx^2*m1^2 + cy^2*n1^2)
                             d = (cx*m2*cy*n1 - cx*m1*cy*n2)/(cx^2*m2^2 + cy^2*n2^2)
 
-                            println("[",m,",",n,"] = [",m1,",",n1,"] + [",-m2,",",-n2,"] -> ",c,d)
+                            println("[",m,",",n,"] = [",m1,",",n1,"] + [",-m2,",",-n2,"] -> ",c," ",d)
                             push!(Cm,c+d)
 
                         end

@@ -21,7 +21,7 @@ function nl_coeffs(X,Y,M,N)
 
                     m, n = m1 + m2, n1 + n2
 
-                    if (m == 0 && n ∈ 1:1:N) || (m > 0 && n ∈ -N:1:N)
+                    if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
 
                         push!(Δp,[m,n,m1,n1,m2,n2])
 
@@ -59,7 +59,7 @@ function nl_coeffs(X,Y,M,N)
 
                     m, n = m1 - m2, n1 - n2
 
-                    if (m == 0 && n ∈ 1:1:N) || (m > 0 && n ∈ -N:1:N)
+                    if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
 
                         push!(Δm,[m,n,m1,n1,m2,n2])
 
@@ -93,10 +93,7 @@ function nl_eqs!(du,u,p,t)
         return a*(2*ny-1) + (b + ny)
     end
 
-    for i ∈ 1:ny
-        u[i] = u[ny + i]
-    end
-
+    u[1] = u[3]
     dq = fill!(similar(u),0)
 
     for (Δ,C) ∈ Cp
@@ -120,10 +117,7 @@ function nl_eqs!(du,u,p,t)
     end
 
     du .= dq
-
-    for i ∈ 1:ny
-        du[i] = dq[ny + i]
-    end
+    du[1] = dq[3]
 
 end
 
@@ -134,14 +128,14 @@ C1,C2   = nl_coeffs(Lx,Ly,nx-1,ny-1)
 
 u0      = randn(ComplexF64,nx*(2*ny-1))
 
-u0      = [1.0,0.0,1.0,2.0,3.0,4.0]
-tspan   = (0.0,1000.0)
+# u0      = [1.0,0.0,1.0,2.0,3.0,4.0]
+tspan   = (0.0,100.0)
 p       = [nx,ny,C1,C2]
 
 prob    = ODEProblem(nl_eqs!,u0,tspan,p)
 sol     = solve(prob,RK4(),adaptive=true,progress=true,reltol=1e-6,abstol=1e-6)
-# integrator = init(prob,RK4())
-# step!(integrator)
+integrator = init(prob,RK4())
+step!(integrator)
 
 Plots.plot(sol,vars=(0,1),linewidth=2,label="(0,-1)",legend=true)
 Plots.plot!(sol,vars=(0,2),linewidth=2,label="(0,0)")

@@ -3,8 +3,6 @@ using Plots; plotly()
 
 function coeffs(X,Y,M,N)
 
-    cx,cy = 2.0*pi/X,2.0*pi/Y
-
     println("Cp...")
 
     Δp = []
@@ -14,7 +12,8 @@ function coeffs(X,Y,M,N)
         n1min = m1 == 0 ? 1 : -N
         for n1 ∈ n1min:1:N
 
-            for m2 ∈ 0:1:M-m1
+            m2max = min(m1,M-m1)
+            for m2 ∈ 0:1:m2max
 
                 n2min = m2 == 0 ? 1 : -N
                 for n2 ∈ n2min:1:N
@@ -28,7 +27,11 @@ function coeffs(X,Y,M,N)
 
                             push!(Δp,[m,n,m1,n1,m2,n2])
 
-                            c = - (cx*m1*cy*n2 - cx*m2*cy*n1)/(cx^2*m1^2 + cy^2*n1^2)
+                            px,py   = (2.0*pi/X)*m1,(2.0*pi/Y)*n1
+                            qx,qy   = (2.0*pi/X)*m2,(2.0*pi/Y)*n2
+
+                            c       = -(px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
+
                             push!(Cp,c)
 
                             println("[",m,",",n,"] = [",m1,",",n1,"] + [",m2,",",n2,"] -> ",c)
@@ -67,11 +70,17 @@ function coeffs(X,Y,M,N)
 
                             push!(Δm,[m,n,m1,n1,m2,n2])
 
-                            c = (cx*m1*cy*n2 - cx*m2*cy*n1)/(cx^2*m1^2 + cy^2*n1^2)
-                            d = (cx*m2*cy*n1 - cx*m1*cy*n2)/(cx^2*m2^2 + cy^2*n2^2)
+                            px,py   = (2.0*pi/X)*Float64(m1),(2.0*pi/Y)*Float64(n1)
+                            qx,qy   = (2.0*pi/X)*Float64(m2),(2.0*pi/Y)*Float64(n2)
 
-                            println("[",m,",",n,"] = [",m1,",",n1,"] + [",-m2,",",-n2,"] -> ",c," ",d)
-                            push!(Cm,c+d)
+                            c       = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
+
+                            push!(Cm,c)
+
+                            # c = (cx*m1*cy*n2 - cx*m2*cy*n1)/(cx^2*m1^2 + cy^2*n1^2)
+                            # d = (cx*m2*cy*n1 - cx*m1*cy*n2)/(cx^2*m2^2 + cy^2*n2^2)
+
+                            println("[",m,",",n,"] = [",m1,",",n1,"] + [",-m2,",",-n2,"] -> ",c)
 
                         end
                     end

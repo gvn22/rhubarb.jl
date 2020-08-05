@@ -1,12 +1,13 @@
 using DifferentialEquations,LinearAlgebra
 using Plots; plotly()
 
-function coeffs(X,Y,M,N)
+function nl_coeffs(X,Y,M,N)
 
     println("Cp...")
 
     Δp = []
     Cp = Float64[]
+
     for m1 ∈ 0:1:M
 
         n1min = m1 == 0 ? 1 : -N
@@ -18,25 +19,20 @@ function coeffs(X,Y,M,N)
                 n2min = m2 == 0 ? 1 : -N
                 for n2 ∈ n2min:1:N
 
-                    if !(m1|n1 == 0) && !(m2|n2 == 0)
+                    m, n = m1 + m2, n1 + n2
 
-                        m = m1 + m2
-                        n = n1 + n2
+                    if (m == 0 && n ∈ 1:1:N) || (m > 0 && n ∈ -N:1:N)
 
-                        if (m >= 0 && m <= M) && (n >= -N && n <= N) && !(m|n == 0)
+                        push!(Δp,[m,n,m1,n1,m2,n2])
 
-                            push!(Δp,[m,n,m1,n1,m2,n2])
+                        px,py   = (2.0*pi/X)*m1,(2.0*pi/Y)*n1
+                        qx,qy   = (2.0*pi/X)*m2,(2.0*pi/Y)*n2
 
-                            px,py   = (2.0*pi/X)*m1,(2.0*pi/Y)*n1
-                            qx,qy   = (2.0*pi/X)*m2,(2.0*pi/Y)*n2
+                        c       = -(px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
 
-                            c       = -(px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
+                        push!(Cp,c)
 
-                            push!(Cp,c)
-
-                            println("[",m,",",n,"] = [",m1,",",n1,"] + [",m2,",",n2,"] -> ",c)
-
-                        end
+                        println("[",m,",",n,"] = [",m1,",",n1,"] + [",m2,",",n2,"] -> ",c)
 
                     end
 
@@ -61,28 +57,21 @@ function coeffs(X,Y,M,N)
                 n2min = m2 == 0 ? 1 : -N
                 for n2 ∈ n2min:1:N
 
-                    if !(m1|n1 == 0) && !(m2|n2 == 0)
+                    m, n = m1 - m2, n1 - n2
 
-                        m = m1 - m2
-                        n = n1 - n2
+                    if (m == 0 && n ∈ 1:1:N) || (m > 0 && n ∈ -N:1:N)
 
-                        if (m >= 0 && m <= M) && (n >= -N && n <= N) && !(m == 0 && n <= 0)
+                        push!(Δm,[m,n,m1,n1,m2,n2])
 
-                            push!(Δm,[m,n,m1,n1,m2,n2])
+                        px,py   = (2.0*pi/X)*Float64(m1),(2.0*pi/Y)*Float64(n1)
+                        qx,qy   = (2.0*pi/X)*Float64(m2),(2.0*pi/Y)*Float64(n2)
 
-                            px,py   = (2.0*pi/X)*Float64(m1),(2.0*pi/Y)*Float64(n1)
-                            qx,qy   = (2.0*pi/X)*Float64(m2),(2.0*pi/Y)*Float64(n2)
+                        c       = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
 
-                            c       = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
+                        push!(Cm,c)
 
-                            push!(Cm,c)
+                        println("[",m,",",n,"] = [",m1,",",n1,"] + [",-m2,",",-n2,"] -> ",c)
 
-                            # c = (cx*m1*cy*n2 - cx*m2*cy*n1)/(cx^2*m1^2 + cy^2*n1^2)
-                            # d = (cx*m2*cy*n1 - cx*m1*cy*n2)/(cx^2*m2^2 + cy^2*n2^2)
-
-                            println("[",m,",",n,"] = [",m1,",",n1,"] + [",-m2,",",-n2,"] -> ",c)
-
-                        end
                     end
 
                 end
@@ -98,7 +87,7 @@ end
 
 function nl_eqs!(du,u,p,t)
 
-    X, Y, nx, ny, Cp, Cm  = p
+    nx, ny, Cp, Cm  = p
 
     function pos(a,b)
         return a*(2*ny-1) + (b + ny)
@@ -106,30 +95,23 @@ function nl_eqs!(du,u,p,t)
 
     dζ = fill!(similar(u),0)
 
-    println("Cp...")
-
     for (Δ,C) ∈ Cp
 
         @show Δ, C
-        k,p,q     = pos(Δ[1],Δ[2]),pos(Δ[3],Δ[4]),pos(Δ[5],Δ[6])
-
+        k,p,q   = pos(Δ[1],Δ[2]),pos(Δ[3],Δ[4]),pos(Δ[5],Δ[6])
         dζ[k]   = dζ[k] + C*u[p]*u[q]
         println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*u[q], "\n")
 
     end
-
-    println("Cm...")
 
     for (Δ,C) ∈ Cm
 
         @show Δ, C
 
         k,p,q   = pos(Δ[1],Δ[2]),pos(Δ[3],Δ[4]),pos(Δ[5],Δ[6])
-
         dζ[k]   = dζ[k] + C*u[p]*conj(u[q])
-        println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*conj(u[q]), "\n")
 
-        # @show dζ[k]
+        println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*conj(u[q]), "\n")
 
     end
 
@@ -142,7 +124,7 @@ end
 Lx,Ly   = 2.0*pi,2.0*pi
 nx,ny   = 2,2
 
-C1,C2   = coeffs(Lx,Ly,nx-1,ny-1)
+C1,C2   = nl_coeffs(Lx,Ly,nx-1,ny-1)
 
 # u0      = randn(ComplexF64,nx*(2*ny-1))
 

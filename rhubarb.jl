@@ -1,186 +1,173 @@
-using DifferentialEquations,LinearAlgebra,SparseArrays,BenchmarkTools
+using DifferentialEquations,RecursiveArrayTools
 using Plots; plotly()
 
-function l_coeffs(β,ν)
+function nl_coeffs(X,Y,M,N)
 
-    ω = zeros(nx*(2*ny-1))
-    # ω = [kx|ky ≠ 0 ? im*β*kx^2/(kx^2 + ky^2) : 0.0 for kx=spanx for ky=spany]
+    println("Cp...")
 
-    v = zeros(nx*(2*ny-1))
-    # v = [ComplexF64(ν*(kx^2 + ky^2)) for kx=spanx for ky=spany]
+    Δp = []
+    Cp = Float64[]
 
-    return ω - v
+    for m1 ∈ 0:1:M
 
-end
+        n1min = m1 == 0 ? 1 : -N
+        for n1 ∈ n1min:1:N
 
-function nl_coeffs(triads,pm)
+            m2max = min(m1,M-m1)
+            for m2 ∈ 0:1:m2max
 
-    function pos(p)
-        return p[1]*(2*ny-1) + (p[2] + ny)
-    end
+                n2min = m2 == 0 ? 1 : -N
+                for n2 ∈ n2min:1:N
 
-    Ks,Cs       = Int[],SparseMatrixCSC{ComplexF64}[]
-    Ps,Qs,As    = Int[],Int[],ComplexF64[]
+                    m, n = m1 + m2, n1 + n2
 
-    for (i,triad) ∈ enumerate(triads)
+                    if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
 
-        K,P,Q   = triad.k ,triad.p, triad.q
+                        push!(Δp,[m,n,m1,n1,m2,n2])
 
-        kx,ky   = ComplexF64(K[1]),ComplexF64(K[2])
-        px,py   = ComplexF64(P[1]),ComplexF64(P[2])
-        qx,qy   = ComplexF64(Q[1]),ComplexF64(Q[2])
-        Akpq    = pm*0.5*((px*qy - qx*py)*(qx^2 + qy^2 - px^2 - py^2)/(kx^2 + ky^2))
+                        px,py   = (2.0*pi/X)*Float64(m1),(2.0*pi/Y)*Float64(n1)
+                        qx,qy   = (2.0*pi/X)*Float64(m2),(2.0*pi/Y)*Float64(n2)
 
-        push!(Ps,pos(P))
-        push!(Qs,pos(Q))
-        push!(As,Akpq)
+                        if m1 ≠ m2
+                            c       = -(px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
+                        else
+                            c       = -(px*qy - qx*py)/(px^2 + py^2)
+                        end
+                        push!(Cp,c)
 
-        next = i < length(triads) ? triads[i + 1] : nothing
-        if(next == nothing || next.k ≠ triad.k)
+                        println("[",m,",",n,"] = [",m1,",",n1,"] + [",m2,",",n2,"] -> ",c)
 
-            # println("Building A for k-> ", pos(K))
-            A = sparse(Ps,Qs,As,nx*(2*ny-1),nx*(2*ny-1))
+                    end
 
-            push!(Ks,pos(K))
-            push!(Cs,A)
-
-            Ps,Qs,As = Int[],Int[],ComplexF64[]
-
+                end
+            end
         end
-
     end
 
-    return zip(Ks,Cs)
+    @show Δp
+
+    println("Cm...")
+
+    Δm = []
+    Cm = Float64[]
+    for m1 ∈ 0:1:M
+
+        n1min = m1 == 0 ? 1 : -N
+        for n1 ∈ n1min:1:N
+
+            for m2 ∈ 0:1:m1
+
+                n2min = m2 == 0 ? 1 : -N
+                for n2 ∈ n2min:1:N
+
+                    m, n = m1 - m2, n1 - n2
+
+                    if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
+
+                        push!(Δm,[m,n,m1,n1,m2,n2])
+
+                        px,py   = (2.0*pi/X)*Float64(m1),(2.0*pi/Y)*Float64(n1)
+                        qx,qy   = (2.0*pi/X)*Float64(m2),(2.0*pi/Y)*Float64(n2)
+
+                        c       = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
+
+                        push!(Cm,c)
+
+                        println("[",m,",",n,"] = [",m1,",",n1,"] + [",-m2,",",-n2,"] -> ",c)
+
+                    end
+
+                end
+            end
+        end
+    end
+
+    @show Δm
+
+    return zip(Δp,Cp),zip(Δm,Cm)
 
 end
 
 function nl_eqs!(du,u,p,t)
 
-    function ind(x)
-        return div(x-1,2*ny-1),mod(x-1,2*ny-1)-ny+1
-    end
+    nx, ny, Cp, Cm  = p
 
-    nx, ny, Bωv, Cp, Cm  = p
-    N = nx*(2*ny-1)
+    dζ = fill!(similar(du),0)
 
-    Σp,Σm   = fill!(similar(u),0),fill!(similar(u),0)
-    # @show u
+    for (Δ,C) ∈ Cp
 
-    # println("Modes: k = p + q")
-    for (k,c) ∈ Cp
+        # @show Δ, C
+        m,n     = Δ[1] + 1, Δ[2] + ny
+        m1,n1   = Δ[3] + 1, Δ[4] + ny
+        m2,n2   = Δ[5] + 1, Δ[6] + ny
 
-        # @show k,ind(k)
-        # @show c
-        # temp = fill!(similar(u),0)
-
-        # @show (c .* u) .* transpose(u)
-        # @show issparse((c .* u) .* transpose(u))
-        # @show issparse(c)
-        # temp = sum(nonzeros((c .* u) .* u'))
-        # @show temp
-        Σp[k] = sum(nonzeros((c .* u) .* transpose(u)))
-
-        # @show Σp[k]
-
-        # mul!(temp,c',u)
-        # Σp[k] = dot(temp,u)
-        # Σp[k] = dot(u,BLAS.gemv('T',c,u))
-
-        # mul!(temp,transpose(c),u)
-        # Σp[k] = BLAS.dotu(N,u,1,temp,1)
+        dζ[m,n] += C*u[m1,n1]*u[m2,n2]
+        # println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*u[q], "\n")
 
     end
 
-    # println("Modes: k = p - q")
-    for (k,c) ∈ Cm
+    for (Δ,C) ∈ Cm
 
-        # temp = fill!(similar(u),0)
-        # @show k,ind(k)
-        # @show c
-        # @show (c .* u) .* transpose(conj(u))
-        # @show issparse((c .* u) .* transpose(conj(u)))
-        # @show sum(nonzeros((c .* u) .* transpose(conj(u)))) # @show temp
-        Σm[k] = sum(nonzeros((c .* u) .* transpose(conj(u))))
+        # @show Δ, C
 
-        # @show Σm[k]
-        # mul!(temp,transpose(c),u)
-        # Σm[k] = BLAS.dotc(N,u,1,temp,1)
+        m,n     = Δ[1] + 1, Δ[2] + ny
+        m1,n1   = Δ[3] + 1, Δ[4] + ny
+        m2,n2   = Δ[5] + 1, Δ[6] + ny
+
+        dζ[m,n] += C*u[m1,n1]*conj(u[m2,n2])
+
+        # println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*conj(u[q]), "\n")
 
     end
 
-    for k ∈ 1:nx*(2*ny-1)
-        du[k] = Σp[k] + Σm[k]
-    end
-
-    # @show du
-    # Σ       = BLAS.axpy!(1.0,Σp,Σm)
-    # temp    = BLAS.axpy!(1.0,Bωv.*u,Σ)
-    # @show temp
-    # du .= ωv.*u .+ Σ
-    # du .= fill!(similar(u),0)
-    # @time du      .= temp
-
-    spanx   = range(0,nx-1,step=1)
-    spany   = range(-ny+1,ny-1,step=1)
-
-    E = sum(ind(k)[1]|ind(k)[2] ≠ 0 ? u[k]*conj(u[k])/(ind(k)[1]^2 + ind(k)[2]^2) : 0.0 for k ∈ 1:nx*(2*ny-1))
-    Z = sum(abs(u[k])^2 for k ∈ 1:nx*(2*ny-1))
-
-    @show t, E,Z
+    du .= dζ
 
 end
 
-# BLAS.set_num_threads(1)
-# resolution
-nx,ny   = 2,2
-spanx   = range(0,nx-1,step=1)
-spany   = range(-ny+1,ny-1,step=1)
+Lx,Ly   = 2.0*pi,2.0*pi
+nx,ny   = 3,2
+# u0    = [1.0,0.0,1.0,2.0,3.0,4.0]
+u0      = randn(ComplexF64,nx,(2*ny-1))
+tspan   = (0.0,100.0)
 
-# linear coefficients
-β,ν     = 1.0e-3,5e-3
-Bωv     = l_coeffs(β,ν)
-
-# non-linear coefficients
-Δp      =  [(k=(kx,ky),p=(px,py),q=(qx,qy))
-            for kx=spanx for ky=spany for px=spanx for py=spany for qx=spanx for qy=spany
-            if (kx|ky ≠ 0 && px|py ≠ 0 && qx|qy ≠ 0)
-            && (kx == px + qx && ky == py + qy)]
-
-sort!(Δp,by=first)
-
-Cp      = nl_coeffs(Δp,+1)
-
-Δm      =  [(k = (kx,ky),p = (px,py), q = (qx,qy))
-            for kx=spanx for ky=spany for px=spanx for py=spany for qx=spanx for qy=spany
-            if (kx|ky ≠ 0 && px|py ≠ 0 && qx|qy ≠ 0)
-            && (kx == px - qx && ky == py - qy)]
-
-sort!(Δm,by=first)
-
-@show Δp
-
-@show Δm
-
-Cm      = nl_coeffs(Δm,-1)
-
-# setup and solve equations
-u0      = randn(ComplexF64,nx*(2*ny-1))
-# u0      = ones(ComplexF64,nx*(2*ny-1))
-
-tspan   = (0.0,20.0)
-p       = [nx,ny,Bωv,Cp,Cm]
+C1,C2   = nl_coeffs(Lx,Ly,nx-1,ny-1)
+p       = [nx,ny,C1,C2]
 
 prob    = ODEProblem(nl_eqs!,u0,tspan,p)
-sol     = solve(prob,Tsit5())
+sol     = solve(prob,RK4(),adaptive=true,progress=true,reltol=1e-6,abstol=1e-6)
+
 # integrator = init(prob,RK4())
 # step!(integrator)
 
-Plots.plot(sol,vars=(0,1),linewidth=4,label="(0,-1)",legend=true)
-Plots.plot!(sol,vars=(0,2),linewidth=4,label="(0,0)")
-Plots.plot!(sol,vars=(0,3),linewidth=4,label="(0,1)")
-Plots.plot!(sol,vars=(0,4),linewidth=4,label="(1,-1)")
-Plots.plot!(sol,vars=(0,5),linewidth=4,label="(1,0)")
-Plots.plot!(sol,vars=(0,6),linewidth=4,label="(1,1)")
+Plots.plot(sol,vars=(0,1),linewidth=2,label="(0,-1)",legend=true)
+Plots.plot!(sol,vars=(0,2),linewidth=2,label="(0,0)")
+Plots.plot!(sol,vars=(0,3),linewidth=2,label="(0,1)")
+Plots.plot!(sol,vars=(0,4),linewidth=2,label="(1,-1)")
+Plots.plot!(sol,vars=(0,5),linewidth=2,label="(1,0)")
+Plots.plot!(sol,vars=(0,6),linewidth=2,label="(1,1)")
 
-# f(x,y)  = (x,abs(y)^2)
-# Plots.plot(sol,vars=(f,1,2)linewidth=4,legend=true)
+
+E = zeros(Float64,length(sol.u))
+Z = zeros(Float64,length(sol.u))
+
+for (i,u) ∈ enumerate(sol.u)
+
+    for j ∈ 0:1:nx-1
+        kmin = j == 0 ? 1 : -ny + 1
+        for k ∈ kmin:1:ny-1
+
+            m,n   = j + 1, k + ny
+
+            cx,cy = (2.0*pi/Lx)*j,(2.0*pi/Ly)*k
+
+            E[i] += abs(u[m,n])^2/(cx^2 + cy^2)
+            Z[i] += abs(u[m,n])^2
+
+        end
+    end
+end
+
+Plots.plot(sol.t,E,linewidth=2,legend=true,xaxis="t",label="E (Energy)")
+Plots.plot!(sol.t,Z,linewidth=2,legend=true,xaxis="t",label="Z (Enstrophy)",yaxis="E, Z")
+
+@show sol.u

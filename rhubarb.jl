@@ -93,13 +93,13 @@ function nl_eqs!(du,u,p,t)
         return a*(2*ny-1) + (b + ny)
     end
 
-    dζ = fill!(similar(u),0)
+    dq = fill!(similar(u),0)
 
     for (Δ,C) ∈ Cp
 
         @show Δ, C
         k,p,q   = pos(Δ[1],Δ[2]),pos(Δ[3],Δ[4]),pos(Δ[5],Δ[6])
-        dζ[k]   = dζ[k] + C*u[p]*u[q]
+        dq[k]   = dq[k] + C*u[p]*u[q]
         println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*u[q], "\n")
 
     end
@@ -109,15 +109,17 @@ function nl_eqs!(du,u,p,t)
         @show Δ, C
 
         k,p,q   = pos(Δ[1],Δ[2]),pos(Δ[3],Δ[4]),pos(Δ[5],Δ[6])
-        dζ[k]   = dζ[k] + C*u[p]*conj(u[q])
+        dq[k]   = dq[k] + C*u[p]*conj(u[q])
 
         println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*conj(u[q]), "\n")
 
     end
 
-    @show dζ
-    du .= dζ
-    du[1] = du[3]
+    du .= dq
+
+    for i ∈ 1:ny
+        du[i] = dq[ny + i]
+    end
 
 end
 
@@ -130,11 +132,11 @@ C1,C2   = nl_coeffs(Lx,Ly,nx-1,ny-1)
 
 u0      = [1.0,0.0,1.0,2.0,3.0,4.0]
 tspan   = (0.0,100.0)
-p       = [Lx,Ly,nx,ny,C1,C2]
+p       = [nx,ny,C1,C2]
 
 prob    = ODEProblem(nl_eqs!,u0,tspan,p)
 sol     = solve(prob,RK4(),adaptive=true,progress=true,reltol=1e-6,abstol=1e-6)
-# integrator = init(prob,RK4())
+integrator = init(prob,RK4())
 # step!(integrator)
 
 Plots.plot(sol,vars=(0,1),linewidth=2,label="(0,-1)",legend=true)

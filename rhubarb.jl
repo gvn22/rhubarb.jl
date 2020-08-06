@@ -3,7 +3,7 @@ using Plots; plotly()
 
 function nl_coeffs(X,Y,M,N)
 
-    println("Cp...")
+    # println("Cp...")
 
     Δp = []
     Cp = Float64[]
@@ -35,7 +35,7 @@ function nl_coeffs(X,Y,M,N)
                         end
                         push!(Cp,c)
 
-                        println("[",m,",",n,"] = [",m1,",",n1,"] + [",m2,",",n2,"] -> ",c)
+                        # println("[",m,",",n,"] = [",m1,",",n1,"] + [",m2,",",n2,"] -> ",c)
 
                     end
 
@@ -44,9 +44,9 @@ function nl_coeffs(X,Y,M,N)
         end
     end
 
-    @show Δp
+    # @show Δp
 
-    println("Cm...")
+    # println("Cm...")
 
     Δm = []
     Cm = Float64[]
@@ -70,10 +70,9 @@ function nl_coeffs(X,Y,M,N)
                         qx,qy   = (2.0*pi/X)*Float64(m2),(2.0*pi/Y)*Float64(n2)
 
                         c       = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
-
                         push!(Cm,c)
 
-                        println("[",m,",",n,"] = [",m1,",",n1,"] + [",-m2,",",-n2,"] -> ",c)
+                        # println("[",m,",",n,"] = [",m1,",",n1,"] + [",-m2,",",-n2,"] -> ",c)
 
                     end
 
@@ -82,7 +81,7 @@ function nl_coeffs(X,Y,M,N)
         end
     end
 
-    @show Δm
+    # @show Δm
 
     return zip(Δp,Cp),zip(Δm,Cm)
 
@@ -109,7 +108,6 @@ function nl_eqs!(du,u,p,t)
     for (Δ,C) ∈ Cm
 
         # @show Δ, C
-
         m,n     = Δ[1] + 1, Δ[2] + ny
         m1,n1   = Δ[3] + 1, Δ[4] + ny
         m2,n2   = Δ[5] + 1, Δ[6] + ny
@@ -124,18 +122,22 @@ function nl_eqs!(du,u,p,t)
 
 end
 
-Lx,Ly   = 2.0*pi,2.0*pi
-nx,ny   = 3,2
-# u0    = [1.0,0.0,1.0,2.0,3.0,4.0]
-u0      = randn(ComplexF64,nx,(2*ny-1))
-tspan   = (0.0,100.0)
+Lx,Ly = 2.0*pi,2.0*pi
+nx,ny = 12,12
 
-C1,C2   = nl_coeffs(Lx,Ly,nx-1,ny-1)
-p       = [nx,ny,C1,C2]
+# u0 = [1.0,0.0,1.0,2.0,3.0,4.0]
+u0 = randn(ComplexF64,nx,(2*ny-1))
+tspan = (0.0,100.0)
 
-prob    = ODEProblem(nl_eqs!,u0,tspan,p)
-sol     = solve(prob,RK4(),adaptive=true,progress=true,reltol=1e-6,abstol=1e-6)
+C1,C2 = nl_coeffs(Lx,Ly,nx-1,ny-1)
+p = [nx,ny,C1,C2]
 
+prob = ODEProblem(nl_eqs!,u0,tspan,p)
+@time sol = solve(prob,RK4(),adaptive=true,progress=true,progress_steps=100,save_start=true,save_everystep=false)
+
+du = similar(u0)
+@time nl_eqs!(du,u0,p,tspan)
+@code_warntype nl_eqs!(du,u0,p,tspan)
 # integrator = init(prob,RK4())
 # step!(integrator)
 
@@ -145,7 +147,6 @@ Plots.plot!(sol,vars=(0,3),linewidth=2,label="(0,1)")
 Plots.plot!(sol,vars=(0,4),linewidth=2,label="(1,-1)")
 Plots.plot!(sol,vars=(0,5),linewidth=2,label="(1,0)")
 Plots.plot!(sol,vars=(0,6),linewidth=2,label="(1,1)")
-
 
 E = zeros(Float64,length(sol.u))
 Z = zeros(Float64,length(sol.u))
@@ -169,5 +170,3 @@ end
 
 Plots.plot(sol.t,E,linewidth=2,legend=true,xaxis="t",label="E (Energy)")
 Plots.plot!(sol.t,Z,linewidth=2,legend=true,xaxis="t",label="Z (Enstrophy)",yaxis="E, Z")
-
-@show sol.u

@@ -2,6 +2,9 @@ using DifferentialEquations
 using TimerOutputs
 using Plots; plotly()
 
+const Lx = 2.0*pi
+const Ly = 2.0*pi
+
 function nl_coeffs(X,Y,M,N)
 
     Δp = []
@@ -133,6 +136,7 @@ function opt_eqs()
         p = [nx,ny,C1,C2]
         prob = ODEProblem(nl_eqs!,u0,tspan,p)
         timings[i] = @elapsed solve(prob,RK4(),adaptive=true,progress=true,save_start=false,save_everystep=false)
+
     end
 
     dims = [i + 1 for i in 1:samples]
@@ -140,13 +144,10 @@ function opt_eqs()
 
 end
 
-const Lx = 2.0*pi
-const Ly = 2.0*pi
-
 opt_eqs()
 
-nx = 6
-ny = 6
+nx = 4
+ny = 4
 
 # u0 = [1.0,0.0,1.0,2.0,3.0,4.0]
 u0 = randn(ComplexF64,nx,(2*ny-1))
@@ -156,7 +157,7 @@ C1,C2 = nl_coeffs(Lx,Ly,nx-1,ny-1)
 p = [nx,ny,C1,C2]
 
 prob = ODEProblem(nl_eqs!,u0,tspan,p)
-@time sol = solve(prob,RK4(),adaptive=true,progress=true,progress_steps=100,save_start=true,saveat=20,save_everystep=false)
+@time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=100,save_start=true,saveat=20,save_everystep=false)
 
 du = similar(u0)
 @time nl_eqs!(du,u0,p,tspan)
@@ -194,4 +195,6 @@ for (i,u) ∈ enumerate(sol.u)
 end
 
 Plots.plot(sol.t,E,linewidth=2,legend=true,xaxis="t",label="E (Energy)")
-Plots.plot!(sol.t,Z,linewidth=2,legend=true,xaxis="t",label="Z (Enstrophy)",yaxis="E, Z")
+Plots.plot(sol.t,Z,linewidth=2,legend=true,xaxis="t",label="Z (Enstrophy)",yaxis="E, Z")
+
+@show Z

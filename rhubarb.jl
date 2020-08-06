@@ -1,13 +1,11 @@
-using DifferentialEquations,RecursiveArrayTools
+using DifferentialEquations
+using TimerOutputs
 using Plots; plotly()
 
 function nl_coeffs(X,Y,M,N)
 
-    # println("Cp...")
-
     Δp = []
     Cp = Float64[]
-
     for m1 ∈ 0:1:M
 
         n1min = m1 == 0 ? 1 : -N
@@ -44,10 +42,6 @@ function nl_coeffs(X,Y,M,N)
         end
     end
 
-    # @show Δp
-
-    # println("Cm...")
-
     Δm = []
     Cm = Float64[]
     for m1 ∈ 0:1:M
@@ -81,7 +75,7 @@ function nl_coeffs(X,Y,M,N)
         end
     end
 
-    # @show Δm
+    # @show Δp, Δm
 
     return zip(Δp,Cp),zip(Δm,Cm)
 
@@ -95,25 +89,26 @@ function nl_eqs!(du,u,p,t)
 
     for (Δ,C) ∈ Cp
 
-        # @show Δ, C
         m,n     = Δ[1] + 1, Δ[2] + ny
         m1,n1   = Δ[3] + 1, Δ[4] + ny
         m2,n2   = Δ[5] + 1, Δ[6] + ny
 
         dζ[m,n] += C*u[m1,n1]*u[m2,n2]
+
+        # @show Δ, C
         # println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*u[q], "\n")
 
     end
 
     for (Δ,C) ∈ Cm
 
-        # @show Δ, C
         m,n     = Δ[1] + 1, Δ[2] + ny
         m1,n1   = Δ[3] + 1, Δ[4] + ny
         m2,n2   = Δ[5] + 1, Δ[6] + ny
 
         dζ[m,n] += C*u[m1,n1]*conj(u[m2,n2])
 
+        # @show Δ, C
         # println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*conj(u[q]), "\n")
 
     end
@@ -122,8 +117,36 @@ function nl_eqs!(du,u,p,t)
 
 end
 
-Lx,Ly = 2.0*pi,2.0*pi
-nx,ny = 12,12
+function opt_eqs()
+
+    samples = 6
+    timings = zeros(samples)
+    for i in 1:samples
+
+        nx = i + 1
+        ny = i + 1
+
+        println("Solving Nx2N system with N = ", nx)
+        u0 = randn(ComplexF64,nx,(2*ny-1))
+        tspan = (0.0,100.0)
+        C1,C2 = nl_coeffs(Lx,Ly,nx-1,ny-1)
+        p = [nx,ny,C1,C2]
+        prob = ODEProblem(nl_eqs!,u0,tspan,p)
+        timings[i] = @elapsed solve(prob,RK4(),adaptive=true,progress=true,save_start=false,save_everystep=false)
+    end
+
+    dims = [i + 1 for i in 1:samples]
+    Plots.plot(dims,timings,scale=:log,xaxis="N",yaxis="T",markershape = :square,legend=false)
+
+end
+
+const Lx = 2.0*pi
+const Ly = 2.0*pi
+
+opt_eqs()
+
+nx = 6
+ny = 6
 
 # u0 = [1.0,0.0,1.0,2.0,3.0,4.0]
 u0 = randn(ComplexF64,nx,(2*ny-1))
@@ -133,13 +156,15 @@ C1,C2 = nl_coeffs(Lx,Ly,nx-1,ny-1)
 p = [nx,ny,C1,C2]
 
 prob = ODEProblem(nl_eqs!,u0,tspan,p)
-@time sol = solve(prob,RK4(),adaptive=true,progress=true,progress_steps=100,save_start=true,save_everystep=false)
+@time sol = solve(prob,RK4(),adaptive=true,progress=true,progress_steps=100,save_start=true,saveat=20,save_everystep=false)
 
 du = similar(u0)
 @time nl_eqs!(du,u0,p,tspan)
 @code_warntype nl_eqs!(du,u0,p,tspan)
 # integrator = init(prob,RK4())
 # step!(integrator)
+
+using Plots; plotly()
 
 Plots.plot(sol,vars=(0,1),linewidth=2,label="(0,-1)",legend=true)
 Plots.plot!(sol,vars=(0,2),linewidth=2,label="(0,0)")

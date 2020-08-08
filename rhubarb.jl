@@ -144,28 +144,32 @@ function opt_eqs()
 
 end
 
+function run()
+
+    lx::Float64 = 2.0*Float64(pi)
+    ly::Float64 = 2.0*Float64(pi)
+    nx::Int = 4
+    ny::Int = 4
+
+    u0 = randn(ComplexF64,nx,(2*ny-1))
+    tspan = (0.0,100.0)
+    C1,C2 = nl_coeffs(lx,ly,nx-1,ny-1)
+    p = [nx,ny,C1,C2]
+    prob = ODEProblem(nl_eqs!,u0,tspan,p)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=100,save_start=true,saveat=20,save_everystep=false)
+
+    return sol
+
+end
+
 opt_eqs()
 
-nx = 4
-ny = 4
-
-# u0 = [1.0,0.0,1.0,2.0,3.0,4.0]
-u0 = randn(ComplexF64,nx,(2*ny-1))
-tspan = (0.0,100.0)
-
-C1,C2 = nl_coeffs(Lx,Ly,nx-1,ny-1)
-p = [nx,ny,C1,C2]
-
-prob = ODEProblem(nl_eqs!,u0,tspan,p)
-@time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=100,save_start=true,saveat=20,save_everystep=false)
-
+sol = run()
 du = similar(u0)
 @time nl_eqs!(du,u0,p,tspan)
 @code_warntype nl_eqs!(du,u0,p,tspan)
 # integrator = init(prob,RK4())
 # step!(integrator)
-
-using Plots; plotly()
 
 Plots.plot(sol,vars=(0,1),linewidth=2,label="(0,-1)",legend=true)
 Plots.plot!(sol,vars=(0,2),linewidth=2,label="(0,0)")
@@ -195,6 +199,6 @@ for (i,u) ∈ enumerate(sol.u)
 end
 
 Plots.plot(sol.t,E,linewidth=2,legend=true,xaxis="t",label="E (Energy)")
-Plots.plot(sol.t,Z,linewidth=2,legend=true,xaxis="t",label="Z (Enstrophy)",yaxis="E, Z")
+Plots.plot!(sol.t,Z,linewidth=2,legend=true,xaxis="t",label="Z (Enstrophy)",yaxis="E, Z")
 
 @show Z

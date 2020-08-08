@@ -9,8 +9,8 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
     M = nx - 1
     N = ny - 1
 
-    Cp = zeros(Float64,nx,2*ny-1,nx,2*ny-1)
-    Cm = zeros(Float64,nx,2*ny-1,nx,2*ny-1)
+    Cp = zeros(Float64,2*ny-1,nx,2*ny-1,nx)
+    Cm = zeros(Float64,2*ny-1,nx,2*ny-1,nx)
 
     for m1 ∈ 0:1:M
 
@@ -36,7 +36,7 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
                             c       = -(px*qy - qx*py)/(px^2 + py^2)
                         end
 
-                        Cp[m1+1,n1+ny,m2+1,n2+ny] = c
+                        Cp[n2+ny,m2+1,n1+ny,m1+1] = c
 
                     end
 
@@ -64,7 +64,7 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
                         c       = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
 
-                        Cm[m1+1,n1+ny,m2+1,n2+ny] = c
+                        Cm[n2+ny,m2+1,n1+ny,m1+1] = c
 
                     end
 
@@ -82,7 +82,7 @@ function nl_eqs!(du,u,p,t)
     M = nx - 1
     N = ny - 1
 
-    dζ = fill!(similar(du),0)
+    dζ = fill!(similar(u),0)
 
     for m1 ∈ 0:1:M
 
@@ -99,7 +99,7 @@ function nl_eqs!(du,u,p,t)
 
                     if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
 
-                        dζ[m+1,n+ny] += Cp[m1+1,n1+ny,m2+1,n2+ny]*u[m1+1,n1+ny]*u[m2+1,n2+ny]
+                        dζ[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
 
                     end
 
@@ -122,7 +122,7 @@ function nl_eqs!(du,u,p,t)
 
                     if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
 
-                        dζ[m+1,n+ny] += Cm[m1+1,n1+ny,m2+1,n2+ny]*u[m1+1,n1+ny]*conj(u[m2+1,n2+ny])
+                        dζ[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
 
                     end
 
@@ -133,19 +133,20 @@ function nl_eqs!(du,u,p,t)
 
     du .= dζ
     dζ = nothing
+
 end
 
 function opt_eqs()
 
-    samples = 20
+    samples = 10
     timings = zeros(samples)
-    for i in 1:2:samples
+    for i in 1:1:samples
 
         nx = i + 1
         ny = i + 1
 
         println("Solving Nx2N system with N = ", nx)
-        u0 = randn(ComplexF64,nx,2*ny-1)
+        u0 = randn(ComplexF64,2*ny-1,nx)
         tspan = (0.0,100.0)
         Cp,Cm = nl_coeffs(lx,ly,nx,ny)
         p = [nx,ny,Cp,Cm]
@@ -161,7 +162,7 @@ end
 
 function exec(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
-    u0 = randn(ComplexF64,nx,(2*ny-1))
+    u0 = randn(ComplexF64,2*ny-1,nx)
     tspan = (0.0,100.0)
     Cp,Cm = nl_coeffs(lx,ly,nx,ny)
     p = [nx,ny,Cp,Cm]
@@ -188,8 +189,8 @@ function energy(lx,ly,nx,ny,sol)
 
                 cx,cy = (2.0*pi/Lx)*j,(2.0*pi/Ly)*k
 
-                E[i] += abs(sol.u[i][m,n])^2/(cx^2 + cy^2)
-                Z[i] += abs(sol.u[i][m,n])^2
+                E[i] += abs(sol.u[i][n,m])^2/(cx^2 + cy^2)
+                Z[i] += abs(sol.u[i][n,m])^2
 
             end
         end
@@ -207,12 +208,12 @@ opt_eqs()
 
 lx = 2.0*Float64(pi)
 ly = 2.0*Float64(pi)
-nx = 6
-ny = 6
+nx = 4
+ny = 4
 
 @time sol = exec(lx,ly,nx,ny)
 
-u0 = randn(ComplexF64,nx,(2*ny-1))
+u0 = randn(ComplexF64,2*ny-1,nx)
 tspan = (0.0,100.0)
 Cp,Cm = nl_coeffs(lx,ly,nx,ny)
 p = [nx,ny,Cp,Cm]

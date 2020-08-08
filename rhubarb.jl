@@ -5,7 +5,12 @@ using Plots; plotly()
 const Lx = 2.0*pi
 const Ly = 2.0*pi
 
-function nl_coeffs(X,Y,M,N)
+function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
+
+    X = lx
+    Y = ly
+    M = nx - 1
+    N = ny - 1
 
     Δp = []
     Cp = Float64[]
@@ -132,7 +137,7 @@ function opt_eqs()
         println("Solving Nx2N system with N = ", nx)
         u0 = randn(ComplexF64,nx,(2*ny-1))
         tspan = (0.0,100.0)
-        C1,C2 = nl_coeffs(Lx,Ly,nx-1,ny-1)
+        C1,C2 = nl_coeffs(lx,ly,nx,ny)
         p = [nx,ny,C1,C2]
         prob = ODEProblem(nl_eqs!,u0,tspan,p)
         timings[i] = @elapsed solve(prob,RK4(),adaptive=true,progress=true,save_start=false,save_everystep=false)
@@ -153,7 +158,7 @@ function exec()
 
     u0 = randn(ComplexF64,nx,(2*ny-1))
     tspan = (0.0,100.0)
-    C1,C2 = nl_coeffs(lx,ly,nx-1,ny-1)
+    C1,C2 = nl_coeffs(lx,ly,nx,ny)
     p = [nx,ny,C1,C2]
     prob = ODEProblem(nl_eqs!,u0,tspan,p)
     @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=100,save_start=true,saveat=20,save_everystep=false)

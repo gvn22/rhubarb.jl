@@ -2,9 +2,6 @@ using DifferentialEquations
 using TimerOutputs
 using Plots; plotly()
 
-const Lx = 2.0*pi
-const Ly = 2.0*pi
-
 function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
     X = lx
@@ -12,8 +9,6 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
     M = nx - 1
     N = ny - 1
 
-    Δp = []
-    # Cp = Float64[]
     Cp = zeros(Float64,nx,2*ny-1,nx,2*ny-1)
     Cm = zeros(Float64,nx,2*ny-1,nx,2*ny-1)
 
@@ -32,8 +27,6 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
                     if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
 
-                        push!(Δp,[m,n,m1,n1,m2,n2])
-
                         px,py   = (2.0*pi/X)*Float64(m1),(2.0*pi/Y)*Float64(n1)
                         qx,qy   = (2.0*pi/X)*Float64(m2),(2.0*pi/Y)*Float64(n2)
 
@@ -42,10 +35,8 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
                         else
                             c       = -(px*qy - qx*py)/(px^2 + py^2)
                         end
-                        # push!(Cp,c)
-                        Cp[m1+1,n1+ny,m2+1,n2+ny] = c
 
-                        # println("[",m,",",n,"] = [",m1,",",n1,"] + [",m2,",",n2,"] -> ",c)
+                        Cp[m1+1,n1+ny,m2+1,n2+ny] = c
 
                     end
 
@@ -54,8 +45,6 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
         end
     end
 
-    Δm = []
-    # Cm = Float64[]
     for m1 ∈ 0:1:M
 
         n1min = m1 == 0 ? 1 : -N
@@ -70,16 +59,12 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
                     if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
 
-                        push!(Δm,[m,n,m1,n1,m2,n2])
-
                         px,py   = (2.0*pi/X)*Float64(m1),(2.0*pi/Y)*Float64(n1)
                         qx,qy   = (2.0*pi/X)*Float64(m2),(2.0*pi/Y)*Float64(n2)
 
                         c       = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
-                        # push!(Cm,c)
-                        Cm[m1+1,n1+ny,m2+1,n2+ny] = c
 
-                        # println("[",m,",",n,"] = [",m1,",",n1,"] + [",-m2,",",-n2,"] -> ",c)
+                        Cm[m1+1,n1+ny,m2+1,n2+ny] = c
 
                     end
 
@@ -88,10 +73,7 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
         end
     end
 
-    # @show Δp, Δm
-
     return Cp,Cm
-    # return Cp,Cm
 end
 
 function nl_eqs!(du,u,p,t)
@@ -155,9 +137,9 @@ end
 
 function opt_eqs()
 
-    samples = 6
+    samples = 20
     timings = zeros(samples)
-    for i in 1:samples
+    for i in 1:2:samples
 
         nx = i + 1
         ny = i + 1
@@ -196,7 +178,7 @@ function energy(lx,ly,nx,ny,sol)
     E = zeros(Float64,length(sol.u))
     Z = fill!(similar(E),0)
 
-    for (i,u) ∈ enumerate(sol.u)
+    for i in eachindex(sol.u)
 
         for j ∈ 0:1:nx-1
             kmin = j == 0 ? 1 : -ny + 1
@@ -206,8 +188,8 @@ function energy(lx,ly,nx,ny,sol)
 
                 cx,cy = (2.0*pi/Lx)*j,(2.0*pi/Ly)*k
 
-                E[i] += abs(u[m,n])^2/(cx^2 + cy^2)
-                Z[i] += abs(u[m,n])^2
+                E[i] += abs(sol.u[i][m,n])^2/(cx^2 + cy^2)
+                Z[i] += abs(sol.u[i][m,n])^2
 
             end
         end
@@ -221,7 +203,7 @@ function energy(lx,ly,nx,ny,sol)
 end
 
 # global code
-# opt_eqs()
+opt_eqs()
 
 lx = 2.0*Float64(pi)
 ly = 2.0*Float64(pi)

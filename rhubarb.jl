@@ -1,11 +1,9 @@
 using DifferentialEquations
-using TimerOutputs
+using TimerOutputs,BenchmarkTools
 using Plots; plotly()
 
 function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
-    X = lx
-    Y = ly
     M = nx - 1
     N = ny - 1
 
@@ -27,16 +25,16 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
                     if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
 
-                        px,py   = (2.0*pi/X)*Float64(m1),(2.0*pi/Y)*Float64(n1)
-                        qx,qy   = (2.0*pi/X)*Float64(m2),(2.0*pi/Y)*Float64(n2)
+                        px::Float64 = 2.0*Float64(pi)/lx*Float64(m1)
+                        py::Float64 = 2.0*Float64(pi)/ly*Float64(n1)
+                        qx::Float64 = 2.0*Float64(pi)/lx*Float64(m2)
+                        qy::Float64 = 2.0*Float64(pi)/ly*Float64(n2)
 
                         if m1 ≠ m2
-                            c       = -(px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
+                            Cp[n2+ny,m2+1,n1+ny,m1+1] = -(px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
                         else
-                            c       = -(px*qy - qx*py)/(px^2 + py^2)
+                            Cp[n2+ny,m2+1,n1+ny,m1+1] = -(px*qy - qx*py)/(px^2 + py^2)
                         end
-
-                        Cp[n2+ny,m2+1,n1+ny,m1+1] = c
 
                     end
 
@@ -59,12 +57,12 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
                     if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
 
-                        px,py   = (2.0*pi/X)*Float64(m1),(2.0*pi/Y)*Float64(n1)
-                        qx,qy   = (2.0*pi/X)*Float64(m2),(2.0*pi/Y)*Float64(n2)
+                        px::Float64 = 2.0*Float64(pi)/lx*Float64(m1)
+                        py::Float64 = 2.0*Float64(pi)/ly*Float64(n1)
+                        qx::Float64 = 2.0*Float64(pi)/lx*Float64(m2)
+                        qy::Float64 = 2.0*Float64(pi)/ly*Float64(n2)
 
-                        c       = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
-
-                        Cm[n2+ny,m2+1,n1+ny,m1+1] = c
+                        Cm[n2+ny,m2+1,n1+ny,m1+1] = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
 
                     end
 
@@ -211,7 +209,7 @@ ly = 2.0*Float64(pi)
 nx = 4
 ny = 4
 
-@time sol = exec(lx,ly,nx,ny)
+@btime sol = exec(lx,ly,nx,ny)
 
 u0 = randn(ComplexF64,2*ny-1,nx)
 tspan = (0.0,100.0)

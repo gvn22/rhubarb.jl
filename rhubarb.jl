@@ -86,7 +86,7 @@ end
 
 function nl_eqs!(du,u,p,t)
 
-    nx, ny, Cp, Cm  = p
+    nx::Int, ny::Int, Cp, Cm  = p
 
     dζ = fill!(similar(du),0)
 
@@ -144,7 +144,7 @@ function opt_eqs()
 
 end
 
-function run()
+function exec()
 
     lx::Float64 = 2.0*Float64(pi)
     ly::Float64 = 2.0*Float64(pi)
@@ -157,19 +157,19 @@ function run()
     p = [nx,ny,C1,C2]
     prob = ODEProblem(nl_eqs!,u0,tspan,p)
     @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=100,save_start=true,saveat=20,save_everystep=false)
+    # integrator = init(prob,RK4())
+    # step!(integrator)
 
     return sol
-
 end
 
 opt_eqs()
 
-sol = run()
+sol = exec()
+
 du = similar(u0)
 @time nl_eqs!(du,u0,p,tspan)
 @code_warntype nl_eqs!(du,u0,p,tspan)
-# integrator = init(prob,RK4())
-# step!(integrator)
 
 Plots.plot(sol,vars=(0,1),linewidth=2,label="(0,-1)",legend=true)
 Plots.plot!(sol,vars=(0,2),linewidth=2,label="(0,0)")

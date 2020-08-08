@@ -13,7 +13,11 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
     N = ny - 1
 
     Δp = []
-    Cp = Float64[]
+    # Cp = Float64[]
+    Cp = zeros(Float64,nx,2*ny-1,nx,2*ny-1)
+    Cm = zeros(Float64,nx,2*ny-1,nx,2*ny-1)
+
+    @show sizeof(Cp), sizeof(Cm)
     for m1 ∈ 0:1:M
 
         n1min = m1 == 0 ? 1 : -N
@@ -39,7 +43,8 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
                         else
                             c       = -(px*qy - qx*py)/(px^2 + py^2)
                         end
-                        push!(Cp,c)
+                        # push!(Cp,c)
+                        Cp[m1+1,n1+ny,m2+1,n2+ny] = c
 
                         # println("[",m,",",n,"] = [",m1,",",n1,"] + [",m2,",",n2,"] -> ",c)
 
@@ -51,7 +56,7 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
     end
 
     Δm = []
-    Cm = Float64[]
+    # Cm = Float64[]
     for m1 ∈ 0:1:M
 
         n1min = m1 == 0 ? 1 : -N
@@ -72,7 +77,8 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
                         qx,qy   = (2.0*pi/X)*Float64(m2),(2.0*pi/Y)*Float64(n2)
 
                         c       = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
-                        push!(Cm,c)
+                        # push!(Cm,c)
+                        Cm[m1+1,n1+ny,m2+1,n2+ny] = c
 
                         # println("[",m,",",n,"] = [",m1,",",n1,"] + [",-m2,",",-n2,"] -> ",c)
 
@@ -85,36 +91,36 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
     # @show Δp, Δm
 
-    return zip(Δp,Cp),zip(Δm,Cm)
-
+    return Δp,Cp,Δm,Cm
+    # return Cp,Cm
 end
 
 function nl_eqs!(du,u,p,t)
 
-    nx::Int, ny::Int, Cp, Cm  = p
+    nx::Int, ny::Int,Δp,Cp,Δm,Cm  = p
 
     dζ = fill!(similar(du),0)
 
-    for (Δ,C) ∈ Cp
+    for Δ ∈ Δp
 
         m,n     = Δ[1] + 1, Δ[2] + ny
         m1,n1   = Δ[3] + 1, Δ[4] + ny
         m2,n2   = Δ[5] + 1, Δ[6] + ny
 
-        dζ[m,n] += C*u[m1,n1]*u[m2,n2]
+        dζ[m,n] += Cp[m1,n1,m2,n2]*u[m1,n1]*u[m2,n2]
 
         # @show Δ, C
         # println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*u[q], "\n")
 
     end
 
-    for (Δ,C) ∈ Cm
+    for Δ ∈ Δm
 
         m,n     = Δ[1] + 1, Δ[2] + ny
         m1,n1   = Δ[3] + 1, Δ[4] + ny
         m2,n2   = Δ[5] + 1, Δ[6] + ny
 
-        dζ[m,n] += C*u[m1,n1]*conj(u[m2,n2])
+        dζ[m,n] += Cm[m1,n1,m2,n2]*u[m1,n1]*conj(u[m2,n2])
 
         # @show Δ, C
         # println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*conj(u[q]), "\n")
@@ -135,10 +141,10 @@ function opt_eqs()
         ny = i + 1
 
         println("Solving Nx2N system with N = ", nx)
-        u0 = randn(ComplexF64,nx,(2*ny-1))
+        u0 = randn(ComplexF64,nx,2*ny-1)
         tspan = (0.0,100.0)
-        C1,C2 = nl_coeffs(lx,ly,nx,ny)
-        p = [nx,ny,C1,C2]
+        Δ1,C2,Δ1,C2 = nl_coeffs(lx,ly,nx,ny)
+        p = [nx,ny,Δ1,C2,Δ1,C2]
         prob = ODEProblem(nl_eqs!,u0,tspan,p)
         timings[i] = @elapsed solve(prob,RK4(),adaptive=true,progress=true,save_start=false,save_everystep=false)
 
@@ -158,8 +164,8 @@ function exec()
 
     u0 = randn(ComplexF64,nx,(2*ny-1))
     tspan = (0.0,100.0)
-    C1,C2 = nl_coeffs(lx,ly,nx,ny)
-    p = [nx,ny,C1,C2]
+    Δ1,C1,Δ2,C2 = nl_coeffs(lx,ly,nx,ny)
+    p = [nx,ny,Δ1,C1,Δ2,C2]
     prob = ODEProblem(nl_eqs!,u0,tspan,p)
     @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=100,save_start=true,saveat=20,save_everystep=false)
     # integrator = init(prob,RK4())
@@ -168,7 +174,7 @@ function exec()
     return sol
 end
 
-opt_eqs()
+# opt_eqs()
 
 sol = exec()
 
@@ -183,6 +189,8 @@ Plots.plot!(sol,vars=(0,4),linewidth=2,label="(1,-1)")
 Plots.plot!(sol,vars=(0,5),linewidth=2,label="(1,0)")
 Plots.plot!(sol,vars=(0,6),linewidth=2,label="(1,1)")
 
+nx = 2
+ny = 2
 E = zeros(Float64,length(sol.u))
 Z = zeros(Float64,length(sol.u))
 

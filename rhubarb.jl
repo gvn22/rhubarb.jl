@@ -191,6 +191,35 @@ function exec(lx::Float64,ly::Float64,nx::Int,ny::Int)
     return sol
 end
 
+function energy(lx,ly,nx,ny,sol)
+
+    E = zeros(Float64,length(sol.u))
+    Z = fill!(similar(E),0)
+
+    for (i,u) ∈ enumerate(sol.u)
+
+        for j ∈ 0:1:nx-1
+            kmin = j == 0 ? 1 : -ny + 1
+            for k ∈ kmin:1:ny-1
+
+                m,n   = j + 1, k + ny
+
+                cx,cy = (2.0*pi/Lx)*j,(2.0*pi/Ly)*k
+
+                E[i] += abs(u[m,n])^2/(cx^2 + cy^2)
+                Z[i] += abs(u[m,n])^2
+
+            end
+        end
+    end
+
+    Plots.plot(sol.t,E,linewidth=2,legend=true,xaxis="t",label="E (Energy)")
+    pez = Plots.plot!(sol.t,Z,linewidth=2,legend=true,xaxis="t",label="Z (Enstrophy)",yaxis="E, Z")
+
+    Plots.display(pez)
+
+end
+
 # global code
 # opt_eqs()
 
@@ -217,29 +246,4 @@ Plots.plot!(sol,vars=(0,4),linewidth=2,label="(1,-1)")
 Plots.plot!(sol,vars=(0,5),linewidth=2,label="(1,0)")
 Plots.plot!(sol,vars=(0,6),linewidth=2,label="(1,1)")
 
-nx = 4
-ny = 4
-E = zeros(Float64,length(sol.u))
-Z = zeros(Float64,length(sol.u))
-
-for (i,u) ∈ enumerate(sol.u)
-
-    for j ∈ 0:1:nx-1
-        kmin = j == 0 ? 1 : -ny + 1
-        for k ∈ kmin:1:ny-1
-
-            m,n   = j + 1, k + ny
-
-            cx,cy = (2.0*pi/Lx)*j,(2.0*pi/Ly)*k
-
-            E[i] += abs(u[m,n])^2/(cx^2 + cy^2)
-            Z[i] += abs(u[m,n])^2
-
-        end
-    end
-end
-
-Plots.plot(sol.t,E,linewidth=2,legend=true,xaxis="t",label="E (Energy)")
-Plots.plot!(sol.t,Z,linewidth=2,legend=true,xaxis="t",label="Z (Enstrophy)",yaxis="E, Z")
-
-@show Z
+energy(lx,ly,nx,ny,sol)

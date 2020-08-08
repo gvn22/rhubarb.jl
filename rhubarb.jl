@@ -17,7 +17,6 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
     Cp = zeros(Float64,nx,2*ny-1,nx,2*ny-1)
     Cm = zeros(Float64,nx,2*ny-1,nx,2*ny-1)
 
-    @show sizeof(Cp), sizeof(Cm)
     for m1 ∈ 0:1:M
 
         n1min = m1 == 0 ? 1 : -N
@@ -91,44 +90,67 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
     # @show Δp, Δm
 
-    return Δp,Cp,Δm,Cm
+    return Cp,Cm
     # return Cp,Cm
 end
 
 function nl_eqs!(du,u,p,t)
 
-    nx::Int, ny::Int,Δp,Cp,Δm,Cm  = p
+    nx::Int,ny::Int,Cp::Array{Float64,4},Cm::Array{Float64,4} = p
+    M = nx - 1
+    N = ny - 1
 
     dζ = fill!(similar(du),0)
 
-    for Δ ∈ Δp
+    for m1 ∈ 0:1:M
 
-        m,n     = Δ[1] + 1, Δ[2] + ny
-        m1,n1   = Δ[3] + 1, Δ[4] + ny
-        m2,n2   = Δ[5] + 1, Δ[6] + ny
+        n1min = m1 == 0 ? 1 : -N
+        for n1 ∈ n1min:1:N
 
-        dζ[m,n] += Cp[m1,n1,m2,n2]*u[m1,n1]*u[m2,n2]
+            m2max = min(m1,M-m1)
+            for m2 ∈ 0:1:m2max
 
-        # @show Δ, C
-        # println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*u[q], "\n")
+                n2min = m2 == 0 ? 1 : -N
+                for n2 ∈ n2min:1:N
 
+                    m, n = m1 + m2, n1 + n2
+
+                    if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
+
+                        dζ[m+1,n+ny] += Cp[m1+1,n1+ny,m2+1,n2+ny]*u[m1+1,n1+ny]*u[m2+1,n2+ny]
+
+                    end
+
+                end
+            end
+        end
     end
 
-    for Δ ∈ Δm
+    for m1 ∈ 0:1:M
 
-        m,n     = Δ[1] + 1, Δ[2] + ny
-        m1,n1   = Δ[3] + 1, Δ[4] + ny
-        m2,n2   = Δ[5] + 1, Δ[6] + ny
+        n1min = m1 == 0 ? 1 : -N
+        for n1 ∈ n1min:1:N
 
-        dζ[m,n] += Cm[m1,n1,m2,n2]*u[m1,n1]*conj(u[m2,n2])
+            for m2 ∈ 0:1:m1
 
-        # @show Δ, C
-        # println("m = ", Δ[1],", n = ", Δ[2],", p = ", k, ", dζ += ", C*u[p]*conj(u[q]), "\n")
+                n2min = m2 == 0 ? 1 : -N
+                for n2 ∈ n2min:1:N
 
+                    m, n = m1 - m2, n1 - n2
+
+                    if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
+
+                        dζ[m+1,n+ny] += Cm[m1+1,n1+ny,m2+1,n2+ny]*u[m1+1,n1+ny]*conj(u[m2+1,n2+ny])
+
+                    end
+
+                end
+            end
+        end
     end
 
     du .= dζ
-
+    dζ = nothing
 end
 
 function opt_eqs()
@@ -143,8 +165,8 @@ function opt_eqs()
         println("Solving Nx2N system with N = ", nx)
         u0 = randn(ComplexF64,nx,2*ny-1)
         tspan = (0.0,100.0)
-        Δ1,C2,Δ1,C2 = nl_coeffs(lx,ly,nx,ny)
-        p = [nx,ny,Δ1,C2,Δ1,C2]
+        Cp,Cm = nl_coeffs(lx,ly,nx,ny)
+        p = [nx,ny,Cp,Cm]
         prob = ODEProblem(nl_eqs!,u0,tspan,p)
         timings[i] = @elapsed solve(prob,RK4(),adaptive=true,progress=true,save_start=false,save_everystep=false)
 
@@ -155,28 +177,34 @@ function opt_eqs()
 
 end
 
-function exec()
-
-    lx::Float64 = 2.0*Float64(pi)
-    ly::Float64 = 2.0*Float64(pi)
-    nx::Int = 4
-    ny::Int = 4
+function exec(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
     u0 = randn(ComplexF64,nx,(2*ny-1))
     tspan = (0.0,100.0)
-    Δ1,C1,Δ2,C2 = nl_coeffs(lx,ly,nx,ny)
-    p = [nx,ny,Δ1,C1,Δ2,C2]
+    Cp,Cm = nl_coeffs(lx,ly,nx,ny)
+    p = [nx,ny,Cp,Cm]
     prob = ODEProblem(nl_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=100,save_start=true,saveat=20,save_everystep=false)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=100,save_start=true,save_everystep=false)
     # integrator = init(prob,RK4())
     # step!(integrator)
 
     return sol
 end
 
+# global code
 # opt_eqs()
 
-sol = exec()
+lx = 2.0*Float64(pi)
+ly = 2.0*Float64(pi)
+nx = 6
+ny = 6
+
+@time sol = exec(lx,ly,nx,ny)
+
+u0 = randn(ComplexF64,nx,(2*ny-1))
+tspan = (0.0,100.0)
+Cp,Cm = nl_coeffs(lx,ly,nx,ny)
+p = [nx,ny,Cp,Cm]
 
 du = similar(u0)
 @time nl_eqs!(du,u0,p,tspan)
@@ -189,8 +217,8 @@ Plots.plot!(sol,vars=(0,4),linewidth=2,label="(1,-1)")
 Plots.plot!(sol,vars=(0,5),linewidth=2,label="(1,0)")
 Plots.plot!(sol,vars=(0,6),linewidth=2,label="(1,1)")
 
-nx = 2
-ny = 2
+nx = 4
+ny = 4
 E = zeros(Float64,length(sol.u))
 Z = zeros(Float64,length(sol.u))
 

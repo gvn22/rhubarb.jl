@@ -77,23 +77,24 @@ end
 function nl_eqs!(du,u,p,t)
 
     nx::Int,ny::Int,Cp::Array{Float64,4},Cm::Array{Float64,4} = p
-    M = nx - 1
-    N = ny - 1
+    M::Int = nx - 1
+    N::Int = ny - 1
 
-    dζ = fill!(similar(u),0)
+    dζ = fill!(similar(du),0)
 
-    for m1 ∈ 0:1:M
+    for m1 = 0:1:M
 
         n1min = m1 == 0 ? 1 : -N
-        for n1 ∈ n1min:1:N
+        for n1 = n1min:1:N
 
             m2max = min(m1,M-m1)
-            for m2 ∈ 0:1:m2max
+            for m2 = 0:1:m2max
 
                 n2min = m2 == 0 ? 1 : -N
-                for n2 ∈ n2min:1:N
+                for n2 = n2min:1:N
 
-                    m, n = m1 + m2, n1 + n2
+                    m::Int = m1 + m2
+                    n::Int = n1 + n2
 
                     if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
 
@@ -109,14 +110,15 @@ function nl_eqs!(du,u,p,t)
     for m1 ∈ 0:1:M
 
         n1min = m1 == 0 ? 1 : -N
-        for n1 ∈ n1min:1:N
+        for n1 = n1min:1:N
 
-            for m2 ∈ 0:1:m1
+            for m2 = 0:1:m1
 
                 n2min = m2 == 0 ? 1 : -N
-                for n2 ∈ n2min:1:N
+                for n2 = n2min:1:N
 
-                    m, n = m1 - m2, n1 - n2
+                    m::Int = m1 - m2
+                    n::Int = n1 - n2
 
                     if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
 
@@ -130,13 +132,13 @@ function nl_eqs!(du,u,p,t)
     end
 
     du .= dζ
-    dζ = nothing
+    # dζ = nothing
 
 end
 
 function opt_eqs()
 
-    samples = 10
+    samples = 7
     timings = zeros(samples)
     for i in 1:1:samples
 
@@ -165,7 +167,7 @@ function exec(lx::Float64,ly::Float64,nx::Int,ny::Int)
     Cp,Cm = nl_coeffs(lx,ly,nx,ny)
     p = [nx,ny,Cp,Cm]
     prob = ODEProblem(nl_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=100,save_start=true,save_everystep=false)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=100,save_start=false,saveat=10,save_everystep=false)
     # integrator = init(prob,RK4())
     # step!(integrator)
 
@@ -185,7 +187,7 @@ function energy(lx,ly,nx,ny,sol)
 
                 m,n   = j + 1, k + ny
 
-                cx,cy = (2.0*pi/Lx)*j,(2.0*pi/Ly)*k
+                cx,cy = (2.0*pi/lx)*j,(2.0*pi/ly)*k
 
                 E[i] += abs(sol.u[i][n,m])^2/(cx^2 + cy^2)
                 Z[i] += abs(sol.u[i][n,m])^2
@@ -199,6 +201,8 @@ function energy(lx,ly,nx,ny,sol)
 
     Plots.display(pez)
 
+    return E,Z
+
 end
 
 # global code
@@ -206,13 +210,13 @@ opt_eqs()
 
 lx = 2.0*Float64(pi)
 ly = 2.0*Float64(pi)
-nx = 4
-ny = 4
+nx = 2
+ny = 2
 
-@btime sol = exec(lx,ly,nx,ny)
+sol = exec(lx,ly,nx,ny)
 
 u0 = randn(ComplexF64,2*ny-1,nx)
-tspan = (0.0,100.0)
+tspan = (0.0,1000.0)
 Cp,Cm = nl_coeffs(lx,ly,nx,ny)
 p = [nx,ny,Cp,Cm]
 
@@ -227,4 +231,4 @@ Plots.plot!(sol,vars=(0,4),linewidth=2,label="(1,-1)")
 Plots.plot!(sol,vars=(0,5),linewidth=2,label="(1,0)")
 Plots.plot!(sol,vars=(0,6),linewidth=2,label="(1,1)")
 
-energy(lx,ly,nx,ny,sol)
+E,Z = energy(lx,ly,nx,ny,sol)

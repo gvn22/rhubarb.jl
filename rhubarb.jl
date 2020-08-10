@@ -155,16 +155,14 @@ function energy(lx,ly,nx,ny,sol)
 
     for i in eachindex(sol.u)
 
-        for j ∈ 0:1:nx-1
-            kmin = j == 0 ? 1 : -ny + 1
-            for k ∈ kmin:1:ny-1
+        for m1 = 0:1:nx-1
+            n1min = m1 == 0 ? 1 : -ny + 1
+            for n1 = n1min:1:ny-1
 
-                m,n   = j + 1, k + ny
+                cx,cy = (2.0*pi/lx)*m1,(2.0*pi/ly)*n1
 
-                cx,cy = (2.0*pi/lx)*j,(2.0*pi/ly)*k
-
-                E[i] += abs(sol.u[i][n,m])^2/(cx^2 + cy^2)
-                Z[i] += abs(sol.u[i][n,m])^2
+                E[i] += abs(sol.u[i][n1 + ny,m1 + 1])^2/(cx^2 + cy^2)
+                Z[i] += abs(sol.u[i][n1 + ny,m1 + 1])^2
 
             end
         end

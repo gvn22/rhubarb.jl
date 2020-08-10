@@ -4,67 +4,57 @@ using Plots; plotly()
 
 function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
-    M = nx - 1
-    N = ny - 1
+    M::Int = nx - 1
+    N::Int = ny - 1
 
     Cp = zeros(Float64,2*ny-1,nx,2*ny-1,nx)
     Cm = zeros(Float64,2*ny-1,nx,2*ny-1,nx)
 
-    for m1 ∈ 0:1:M
-
-        n1min = m1 == 0 ? 1 : -N
-        for n1 ∈ n1min:1:N
-
-            m2max = min(m1,M-m1)
-            for m2 ∈ 0:1:m2max
+    for m1=1:1:M
+        for n1=-N:1:N
+            for m2=0:1:min(m1,M-m1)
 
                 n2min = m2 == 0 ? 1 : -N
-                for n2 ∈ n2min:1:N
+                for n2=max(n2min,-N-n1):1:min(N,N-n1)
 
-                    m, n = m1 + m2, n1 + n2
+                    px::Float64 = 2.0*Float64(pi)/lx*Float64(m1)
+                    py::Float64 = 2.0*Float64(pi)/ly*Float64(n1)
+                    qx::Float64 = 2.0*Float64(pi)/lx*Float64(m2)
+                    qy::Float64 = 2.0*Float64(pi)/ly*Float64(n2)
 
-                    if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
-
-                        px::Float64 = 2.0*Float64(pi)/lx*Float64(m1)
-                        py::Float64 = 2.0*Float64(pi)/ly*Float64(n1)
-                        qx::Float64 = 2.0*Float64(pi)/lx*Float64(m2)
-                        qy::Float64 = 2.0*Float64(pi)/ly*Float64(n2)
-
-                        if m1 ≠ m2
-                            Cp[n2+ny,m2+1,n1+ny,m1+1] = -(px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
-                        else
-                            Cp[n2+ny,m2+1,n1+ny,m1+1] = -(px*qy - qx*py)/(px^2 + py^2)
-                        end
-
+                    if m1 == m2
+                        Cp[n2+ny,m2+1,n1+ny,m1+1] = -(px*qy - qx*py)/(px^2 + py^2)
+                    else
+                        Cp[n2+ny,m2+1,n1+ny,m1+1] = -(px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
                     end
+
+                    # m::Int = m1 + m2
+                    # n::Int = n1 + n2
+                    # push!(Δp,[m,n,m1,n1,m2,n2,Cp[n2+ny,m2+1,n1+ny,m1+1]])
 
                 end
             end
         end
     end
 
-    for m1 ∈ 0:1:M
-
-        n1min = m1 == 0 ? 1 : -N
-        for n1 ∈ n1min:1:N
-
-            for m2 ∈ 0:1:m1
+    for m1=1:1:M
+        for n1=-N:1:N
+            for m2=0:1:m1
 
                 n2min = m2 == 0 ? 1 : -N
-                for n2 ∈ n2min:1:N
+                n2max = m2 == m1 ? n1 - 1 : N
+                for n2=max(n2min,n1-N):1:min(n2max,n1+N)
 
-                    m, n = m1 - m2, n1 - n2
+                    px::Float64 = 2.0*Float64(pi)/lx*Float64(m1)
+                    py::Float64 = 2.0*Float64(pi)/ly*Float64(n1)
+                    qx::Float64 = 2.0*Float64(pi)/lx*Float64(m2)
+                    qy::Float64 = 2.0*Float64(pi)/ly*Float64(n2)
 
-                    if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
+                    Cm[n2+ny,m2+1,n1+ny,m1+1] = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
 
-                        px::Float64 = 2.0*Float64(pi)/lx*Float64(m1)
-                        py::Float64 = 2.0*Float64(pi)/ly*Float64(n1)
-                        qx::Float64 = 2.0*Float64(pi)/lx*Float64(m2)
-                        qy::Float64 = 2.0*Float64(pi)/ly*Float64(n2)
-
-                        Cm[n2+ny,m2+1,n1+ny,m1+1] = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
-
-                    end
+                    # m::Int = m1 - m2
+                    # n::Int = n1 - n2
+                    # push!(Δm,[m,n,m1,n1,-m2,-n2,Cm[n2+ny,m2+1,n1+ny,m1+1]])
 
                 end
             end
@@ -72,6 +62,7 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
     end
 
     return Cp,Cm
+
 end
 
 function nl_eqs!(du,u,p,t)
@@ -82,49 +73,35 @@ function nl_eqs!(du,u,p,t)
 
     dζ = fill!(similar(du),0)
 
-    for m1 = 0:1:M
-
-        n1min = m1 == 0 ? 1 : -N
-        for n1 = n1min:1:N
-
-            m2max = min(m1,M-m1)
-            for m2 = 0:1:m2max
+    for m1=1:1:M
+        for n1=-N:1:N
+            for m2=0:1:min(m1,M-m1)
 
                 n2min = m2 == 0 ? 1 : -N
-                for n2 = n2min:1:N
+                for n2=max(n2min,-N-n1):1:min(N,N-n1)
 
                     m::Int = m1 + m2
                     n::Int = n1 + n2
 
-                    if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
-
-                        dζ[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
-
-                    end
+                    dζ[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
 
                 end
             end
         end
     end
 
-    for m1 ∈ 0:1:M
-
-        n1min = m1 == 0 ? 1 : -N
-        for n1 = n1min:1:N
-
-            for m2 = 0:1:m1
+    for m1=1:1:M
+        for n1=-N:1:N
+            for m2=0:1:m1
 
                 n2min = m2 == 0 ? 1 : -N
-                for n2 = n2min:1:N
+                n2max = m2 == m1 ? n1 - 1 : N
+                for n2=max(n2min,n1-N):1:min(n2max,n1+N)
 
                     m::Int = m1 - m2
                     n::Int = n1 - n2
 
-                    if (m == 0 && n ∈ 1:1:N) || (m >= 1 && n ∈ -N:1:N)
-
-                        dζ[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
-
-                    end
+                    dζ[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
 
                 end
             end
@@ -132,7 +109,6 @@ function nl_eqs!(du,u,p,t)
     end
 
     du .= dζ
-    # dζ = nothing
 
 end
 
@@ -160,16 +136,14 @@ function opt_eqs()
 
 end
 
-function exec(lx::Float64,ly::Float64,nx::Int,ny::Int)
+function rhu(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
     u0 = randn(ComplexF64,2*ny-1,nx)
     tspan = (0.0,100.0)
     Cp,Cm = nl_coeffs(lx,ly,nx,ny)
     p = [nx,ny,Cp,Cm]
     prob = ODEProblem(nl_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=100,save_start=false,saveat=10,save_everystep=false)
-    # integrator = init(prob,RK4())
-    # step!(integrator)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=100,saveat=10,save_start=false,save_everystep=false)
 
     return sol
 end
@@ -181,16 +155,14 @@ function energy(lx,ly,nx,ny,sol)
 
     for i in eachindex(sol.u)
 
-        for j ∈ 0:1:nx-1
-            kmin = j == 0 ? 1 : -ny + 1
-            for k ∈ kmin:1:ny-1
+        for m1 = 0:1:nx-1
+            n1min = m1 == 0 ? 1 : -ny + 1
+            for n1 = n1min:1:ny-1
 
-                m,n   = j + 1, k + ny
+                cx,cy = (2.0*pi/lx)*m1,(2.0*pi/ly)*n1
 
-                cx,cy = (2.0*pi/lx)*j,(2.0*pi/ly)*k
-
-                E[i] += abs(sol.u[i][n,m])^2/(cx^2 + cy^2)
-                Z[i] += abs(sol.u[i][n,m])^2
+                E[i] += abs(sol.u[i][n1 + ny,m1 + 1])^2/(cx^2 + cy^2)
+                Z[i] += abs(sol.u[i][n1 + ny,m1 + 1])^2
 
             end
         end
@@ -205,30 +177,36 @@ function energy(lx,ly,nx,ny,sol)
 
 end
 
-# global code
-opt_eqs()
 
+# global code
 lx = 2.0*Float64(pi)
 ly = 2.0*Float64(pi)
-nx = 2
-ny = 2
+nx = 6
+ny = 6
 
-sol = exec(lx,ly,nx,ny)
+sol = rhu(lx,ly,nx,ny)
 
+E,Z = energy(lx,ly,nx,ny,sol)
+
+Plots.plot(sol)
+# Plots.plot(sol,vars=(0,1),linewidth=2,label="(0,-1)",legend=true)
+# Plots.plot!(sol,vars=(0,2),linewidth=2,label="(0,0)")
+# Plots.plot!(sol,vars=(0,3),linewidth=2,label="(0,1)")
+# Plots.plot!(sol,vars=(0,4),linewidth=2,label="(1,-1)")
+# Plots.plot!(sol,vars=(0,5),linewidth=2,label="(1,0)")
+# Plots.plot!(sol,vars=(0,6),linewidth=2,label="(1,1)")
+
+opt_eqs()
+
+# tests
 u0 = randn(ComplexF64,2*ny-1,nx)
 tspan = (0.0,1000.0)
 Cp,Cm = nl_coeffs(lx,ly,nx,ny)
 p = [nx,ny,Cp,Cm]
 
+@btime nl_coeffs(lx,ly,nx,ny)
 du = similar(u0)
 @time nl_eqs!(du,u0,p,tspan)
 @code_warntype nl_eqs!(du,u0,p,tspan)
-
-Plots.plot(sol,vars=(0,1),linewidth=2,label="(0,-1)",legend=true)
-Plots.plot!(sol,vars=(0,2),linewidth=2,label="(0,0)")
-Plots.plot!(sol,vars=(0,3),linewidth=2,label="(0,1)")
-Plots.plot!(sol,vars=(0,4),linewidth=2,label="(1,-1)")
-Plots.plot!(sol,vars=(0,5),linewidth=2,label="(1,0)")
-Plots.plot!(sol,vars=(0,6),linewidth=2,label="(1,1)")
-
-E,Z = energy(lx,ly,nx,ny,sol)
+# integrator = init(prob,RK4())
+# step!(integrator)

@@ -13,6 +13,7 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
     # Δp = []
     # Δm = []
 
+    # ++ interactions note: +0 has only (0,+n)
     for m1=1:1:M
         for n1=-N:1:N
             for m2=0:1:min(m1,M-m1)
@@ -40,6 +41,7 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
         end
     end
 
+    # +- interactions note: - includes (0,-n) because it is conj(0,n)
     for m1=1:1:M
         for n1=-N:1:N
             for m2=0:1:m1
@@ -76,6 +78,7 @@ function nl_eqs!(du,u,p,t)
 
     dζ = fill!(similar(du),0)
 
+    # ++ interactions
     for m1=1:1:M
         for n1=-N:1:N
             for m2=0:1:min(m1,M-m1)
@@ -93,6 +96,7 @@ function nl_eqs!(du,u,p,t)
         end
     end
 
+    # +- interactions
     for m1=1:1:M
         for n1=-N:1:N
             for m2=0:1:m1
@@ -155,6 +159,7 @@ function gql_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
     end
 
     # L - L = L
+    # note: -L should always include (0,-n)
     for m1=1:1:Λ
         for n1=-N:1:N
             for m2=0:1:m1
@@ -228,6 +233,7 @@ function gql_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
     end
 
     # H - L = H
+    # note: -L should always include (0,-n)
     for m1=Λ+1:1:M
         for n1=-N:1:N
             for m2=0:1:min(Λ,m1 - Λ - 1)
@@ -258,7 +264,7 @@ end
 function gql_eqs!(du,u,p,t)
 
     nx::Int,ny::Int,Λ::Int,Cp::Array{Float64,4},Cm::Array{Float64,4} = p
-
+    
     M::Int = nx - 1
     N::Int = ny - 1
 

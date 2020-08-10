@@ -2,3 +2,5 @@ Fourier inverse to visualise data spatially
 Structure for GCE2 field bilinear
 Array split for positive and negative n's
 Separate enstrophy and energy computation
+Compute power in modes, and use to compare NL v GQL
+Move key functions to module Triads

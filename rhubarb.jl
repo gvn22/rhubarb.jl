@@ -396,7 +396,7 @@ function rhu(lx::Float64,ly::Float64,nx::Int,ny::Int)
     Cp,Cm = nl_coeffs(lx,ly,nx,ny)
     p = [nx,ny,Cp,Cm]
     prob = ODEProblem(nl_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=100,saveat=10,save_start=false,save_everystep=false)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,saveat=1,save_start=false,save_everystep=false)
 
     return sol
 end
@@ -408,7 +408,7 @@ function barb(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
     Cp,Cm = gql_coeffs(lx,ly,nx,ny,Λ)
     p = [nx,ny,Λ,Cp,Cm]
     prob = ODEProblem(gql_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=100,saveat=10,save_start=false,save_everystep=false)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,saveat=10,save_start=false,save_everystep=false)
 
     return sol
 end
@@ -442,10 +442,10 @@ function energy(lx,ly,nx,ny,sol)
 
 end
 
-function iftransform(sol,nx::Int,ny::Int)
+function inversefourier(sol,nx::Int,ny::Int)
 
-    @show sizeof(sol.u)
-    uxy = zeros(ComplexF64,2*ny-1,2*nx-1,length(sol.u))
+    umn = zeros(ComplexF64,2*ny-1,2*nx-1,length(sol.u))
+    uxy = zeros(Float64,2*ny-1,2*nx-1,length(sol.u))
 
     for i in eachindex(sol.u)
 
@@ -453,14 +453,23 @@ function iftransform(sol,nx::Int,ny::Int)
             n1min = m1 == 0 ? 1 : -ny + 1
             for n1 = n1min:1:ny-1
 
-                uxy[n1 + ny,m1+nx,i] = sol.u[i][n1+ny,m1+1]
-                uxy[-n1 + ny,-m1+nx,i] = conj(sol.u[i][n1+ny,m1+1])
+                umn[n1 + ny,m1+nx,i] = sol.u[i][n1+ny,m1+1]
+                umn[-n1 + ny,-m1+nx,i] = conj(sol.u[i][n1+ny,m1+1])
+
+                if n1 == 0 && m1 == 0
+                    umn[-n1 + ny,-m1+nx,i] = 0.0 + im*0.0
+                end
+
+                uxy[n1 + ny,m1+nx,i] = abs(umn[n1 + ny,m1+nx,i])
+                uxy[-n1 + ny,-m1+nx,i] = abs(umn[-n1 + ny,-m1+nx,i])
+
             end
         end
 
+
     end
 
-    return uxy
+    return uxy,umn
 
 end
 
@@ -503,5 +512,17 @@ du = similar(u0)
 # integrator = init(prob,RK4())
 # step!(integrator)
 
-solxy = iftransform(sol,nx,ny)
-Plots.plot(solxy[:,:,end])
+solxy,solmn = inversefourier(sol,nx,ny)
+
+x = LinRange(-lx,lx,2*nx-1)
+y = LinRange(-ly,ly,2*nx-1)
+
+@show sol.u[begin]
+Plots.plot(x,y,solxy[:,:,begin],st=:contourf,aspect=:equal)
+
+@show type
+
+anim = @animate for i ∈ 1:length(sol.t)
+    Plots.plot(x,y,solxy[:,:,i],st=:contourf,aspect=:equal)
+end
+gif(anim, "anim_xy.gif", fps = 1)

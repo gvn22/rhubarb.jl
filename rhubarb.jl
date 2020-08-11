@@ -1,4 +1,4 @@
-using DifferentialEquations
+using DifferentialEquations,FFTW
 using TimerOutputs,BenchmarkTools
 using Plots; plotly()
 
@@ -264,7 +264,7 @@ end
 function gql_eqs!(du,u,p,t)
 
     nx::Int,ny::Int,Λ::Int,Cp::Array{Float64,4},Cm::Array{Float64,4} = p
-    
+
     M::Int = nx - 1
     N::Int = ny - 1
 
@@ -365,7 +365,6 @@ function gql_eqs!(du,u,p,t)
 
 end
 
-
 function opt_eqs()
 
     samples = 7
@@ -443,12 +442,34 @@ function energy(lx,ly,nx,ny,sol)
 
 end
 
+function iftransform(sol,nx::Int,ny::Int)
+
+    @show sizeof(sol.u)
+    uxy = zeros(ComplexF64,2*ny-1,2*nx-1,length(sol.u))
+
+    for i in eachindex(sol.u)
+
+        for m1 = 0:1:nx-1
+            n1min = m1 == 0 ? 1 : -ny + 1
+            for n1 = n1min:1:ny-1
+
+                uxy[n1 + ny,m1+nx,i] = sol.u[i][n1+ny,m1+1]
+                uxy[-n1 + ny,-m1+nx,i] = conj(sol.u[i][n1+ny,m1+1])
+            end
+        end
+
+    end
+
+    return uxy
+
+end
+
 # global code
 lx = 2.0*Float64(pi)
 ly = 2.0*Float64(pi)
-nx = 4
-ny = 4
-Λ = 0
+nx = 2
+ny = 2
+Λ = 1
 
 # Δ1,Δ2 = nl_coeffs(lx,ly,nx,ny)
 # Γ1,Γ2 = gql_coeffs(lx,ly,nx,ny,Λ)
@@ -481,3 +502,6 @@ du = similar(u0)
 @code_warntype gql_eqs!(du,u0,p,tspan)
 # integrator = init(prob,RK4())
 # step!(integrator)
+
+solxy = iftransform(sol,nx,ny)
+Plots.plot(solxy[:,:,end])

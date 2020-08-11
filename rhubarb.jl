@@ -2,6 +2,28 @@ using DifferentialEquations,FFTW
 using TimerOutputs,BenchmarkTools
 using Plots; plotly()
 
+function l_coeffs(β::Float64,ν::Float64,nx::Int,ny::Int)
+
+    ω = zeros(Float64,2*ny-1,nx)
+    v = zeros(Float64,2*ny-1,nx)
+
+    M::Int = nx - 1
+    N::Int = ny - 1
+
+    for m = 0:1:M
+        nmin = m == 0 ? 1 : -N
+        for n=nmin:1:N
+
+            ω[n+ny,m+1] = β*m/(m^2 + n^2)
+            v[n+ny,m+1] = - ν*(m^2 + n^2)
+
+        end
+    end
+
+    return ω,v
+
+end
+
 function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
     M::Int = nx - 1
@@ -72,11 +94,21 @@ end
 
 function nl_eqs!(du,u,p,t)
 
-    nx::Int,ny::Int,Cp::Array{Float64,4},Cm::Array{Float64,4} = p
+    nx::Int,ny::Int,ω::Array{Float64,2},v::Array{Float64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
     M::Int = nx - 1
     N::Int = ny - 1
 
     dζ = fill!(similar(du),0)
+
+    for m = 0:1:M
+        nmin = m == 0 ? 1 : -N
+        for n=nmin:1:N
+
+            dζ[n+ny,m+1] += im*ω[n+ny,m+1]*u[n+ny,m+1]
+            dζ[n+ny,m+1] += v[n+ny,m+1]*u[n+ny,m+1]
+
+        end
+    end
 
     # ++ interactions
     for m1=1:1:M
@@ -263,12 +295,23 @@ end
 
 function gql_eqs!(du,u,p,t)
 
-    nx::Int,ny::Int,Λ::Int,Cp::Array{Float64,4},Cm::Array{Float64,4} = p
+    nx::Int,ny::Int,Λ::Int,ω::Array{Float64,2},v::Array{Float64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
 
     M::Int = nx - 1
     N::Int = ny - 1
 
     dζ = fill!(similar(du),0)
+
+    # linear terms
+    for m = 0:1:M
+        nmin = m == 0 ? 1 : -N
+        for n=nmin:1:N
+
+            dζ[n+ny,m+1] += im*ω[n+ny,m+1]*u[n+ny,m+1]
+            dζ[n+ny,m+1] += v[n+ny,m+1]*u[n+ny,m+1]
+
+        end
+    end
 
     # L + L = L
     for m1=1:1:Λ
@@ -389,27 +432,30 @@ function opt_eqs()
 
 end
 
-function rhu(lx::Float64,ly::Float64,nx::Int,ny::Int)
+function rhu(lx::Float64,ly::Float64,nx::Int,ny::Int,β::Float64,ν::Float64)
 
     u0 = rand(ComplexF64,2*ny-1,nx)
-    # u0 = [0.0 1.0; 0.0 2.0; 1.0 2.0]
+    # u0 = [1.0 2.0; 3.0 4.0; 5.0 6.0]
     tspan = (0.0,100.0)
+    ω,v = l_coeffs(β,ν,nx,ny)
     Cp,Cm = nl_coeffs(lx,ly,nx,ny)
-    p = [nx,ny,Cp,Cm]
+    p = [nx,ny,ω,v,Cp,Cm]
     prob = ODEProblem(nl_eqs!,u0,tspan,p)
     @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=true)
 
     return sol
 end
 
-function barb(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
+function barb(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,β::Float64,ν::Float64)
 
     u0 = rand(ComplexF64,2*ny-1,nx)
+    # u0 = [1.0 2.0; 3.0 4.0; 5.0 6.0]
     tspan = (0.0,100.0)
+    ω,v = l_coeffs(β,ν,nx,ny)
     Cp,Cm = gql_coeffs(lx,ly,nx,ny,Λ)
-    p = [nx,ny,Λ,Cp,Cm]
+    p = [nx,ny,Λ,ω,v,Cp,Cm]
     prob = ODEProblem(gql_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,saveat=10,save_start=false,save_everystep=false)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=true)
 
     return sol
 end
@@ -486,7 +532,7 @@ function plot4time(sol)
     anim = @animate for i ∈ 1:length(sol.t)
         Plots.plot(x,y,solxy[:,:,i],st=:contourf,aspect=:equal)
     end
-    gif(anim, "anim_xy.gif", fps = 5)
+    gif(anim, "anim_xy3.gif", fps = 5)
 
 end
 
@@ -496,12 +542,13 @@ ly = 2.0*Float64(pi)
 nx = 2
 ny = 2
 Λ = 1
-
+β = 1.0
+ν = 0.0
 # Δ1,Δ2 = nl_coeffs(lx,ly,nx,ny)
 # Γ1,Γ2 = gql_coeffs(lx,ly,nx,ny,Λ)
 
-sol = rhu(lx,ly,nx,ny)
-sol = barb(lx,ly,nx,ny,Λ)
+sol = rhu(lx,ly,nx,ny,β,ν)
+sol = barb(lx,ly,nx,ny,Λ,β,ν)
 
 E,Z = energy(lx,ly,nx,ny,sol)
 

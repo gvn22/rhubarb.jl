@@ -522,17 +522,17 @@ function inversefourier(sol,nx::Int,ny::Int)
             end
         end
 
-        uff[:,:,i] = ifft(umn[:,:,i])
+        uff[:,:,i] = ifft(ifftshift(umn[:,:,i]))
 
         for m=1:1:2*nx-1
             for n=1:1:2*ny-1
-                uxy[m,n,i] = abs(uff[n,m,i])
+                uxy[m,n,i] = real(uff[n,m,i])
             end
         end
 
     end
 
-    return uxy,umn
+    return uxy,uff
 
 end
 
@@ -542,36 +542,36 @@ function plot4time(var,fn::String,lx::Float64,ly::Float64,nx::Int,ny::Int)
     y = LinRange(-ly,ly,2*ny-1)
 
     anim = @animate for i ∈ 1:length(var[1,1,:])
-        Plots.plot(x,y,var[:,:,i],st=:contourf,color=:matter,xaxis="x",yaxis="y",title=i*20,aspect=:equal)
+        Plots.plot(x,y,var[:,:,i],st=:contourf,color=:bwr,xaxis="x",yaxis="y",title=(i-1)*50,aspect=:equal)
     end
-    gif(anim, fn, fps = 1)
-
-    return nothing
+    gif(anim, fn, fps = 0.5)
+    # return nothing
 end
 
 # global code
 lx = 2.0*Float64(pi)
 ly = 2.0*Float64(pi)
+x = LinRange(-lx,lx,2*nx-1)
+y = LinRange(-ly,ly,2*ny-1)
 nx = 10
 ny = 10
 Λ = 1
-β = 0.0
+β = 10.0
 ν = 0.01
+
 # Δ1,Δ2 = nl_coeffs(lx,ly,nx,ny)
 # Γ1,Γ2 = gql_coeffs(lx,ly,nx,ny,Λ)
-uin = randn(ComplexF64,2*ny-1,nx)
+# uin = randn(ComplexF64,2*ny-1,nx)
 
 u0 = uin
 sol1 = rhu(lx,ly,nx,ny,β,ν,u0)
 E1,Z1 = energy(lx,ly,nx,ny,sol1)
 
 uxy,umn = inversefourier(sol1,nx,ny)
-x = LinRange(-lx,lx,2*nx-1)
-y = LinRange(-ly,ly,2*ny-1)
-Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:matter,xaxis="x",yaxis="y")
-Plots.plot(x,y,uxy[:,:,end],st=:contourf,color=:matter,xaxis="x",yaxis="y")
+Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+Plots.plot(x,y,uxy[:,:,20],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
-plot4time(uxy,"zeta.gif",lx,ly,nx,ny)
+plot4time(uxy,"zeta_beta.gif",lx,ly,nx,ny)
 
 u0 = uin
 sol2 = rhu(lx,ly,nx,ny,β,ν,u0)

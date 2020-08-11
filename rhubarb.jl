@@ -392,11 +392,12 @@ end
 function rhu(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
     u0 = rand(ComplexF64,2*ny-1,nx)
+    # u0 = [0.0 1.0; 0.0 2.0; 1.0 2.0]
     tspan = (0.0,100.0)
     Cp,Cm = nl_coeffs(lx,ly,nx,ny)
     p = [nx,ny,Cp,Cm]
     prob = ODEProblem(nl_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,saveat=1,save_start=false,save_everystep=false)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=true)
 
     return sol
 end
@@ -473,6 +474,22 @@ function inversefourier(sol,nx::Int,ny::Int)
 
 end
 
+function plot4time(sol)
+
+    solxy,solmn = inversefourier(sol,nx,ny)
+
+    x = LinRange(-lx,lx,2*nx-1)
+    y = LinRange(-ly,ly,2*nx-1)
+
+    Plots.plot(x,y,solxy[:,:,begin],st=:contourf,aspect=:equal)
+
+    anim = @animate for i ∈ 1:length(sol.t)
+        Plots.plot(x,y,solxy[:,:,i],st=:contourf,aspect=:equal)
+    end
+    gif(anim, "anim_xy.gif", fps = 5)
+
+end
+
 # global code
 lx = 2.0*Float64(pi)
 ly = 2.0*Float64(pi)
@@ -512,17 +529,4 @@ du = similar(u0)
 # integrator = init(prob,RK4())
 # step!(integrator)
 
-solxy,solmn = inversefourier(sol,nx,ny)
-
-x = LinRange(-lx,lx,2*nx-1)
-y = LinRange(-ly,ly,2*nx-1)
-
-@show sol.u[begin]
-Plots.plot(x,y,solxy[:,:,begin],st=:contourf,aspect=:equal)
-
-@show type
-
-anim = @animate for i ∈ 1:length(sol.t)
-    Plots.plot(x,y,solxy[:,:,i],st=:contourf,aspect=:equal)
-end
-gif(anim, "anim_xy.gif", fps = 1)
+plot4time(sol)

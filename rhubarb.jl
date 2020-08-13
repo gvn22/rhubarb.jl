@@ -1,4 +1,4 @@
-using OrdinaryDiffEq,FFTW,RecursiveArrayTools
+using OrdinaryDiffEq,FFTW
 using TimerOutputs,BenchmarkTools
 using Plots; plotly()
 
@@ -133,6 +133,7 @@ function nl_eqs!(du,u,p,t)
                     n::Int = n1 + n2
 
                     dζ[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
+                    # could eliminate addition on array indices
 
                 end
             end
@@ -443,11 +444,11 @@ function opt_eqs()
 
 end
 
-function rhu(lx::Float64,ly::Float64,nx::Int,ny::Int,β::Float64,ν::Float64,u0::Array{ComplexF64,2})
+function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,β::Float64,ν::Float64,u0::Array{ComplexF64,2})
 
     # u0 = rand(ComplexF64,2*ny-1,nx)
     # u0 = [1.0 2.0; 3.0 4.0; 5.0 6.0]
-    tspan = (0.0,1000.0)
+    tspan = (0.0,200.0)
     ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
     Cp,Cm = nl_coeffs(lx,ly,nx,ny)
     p = [nx,ny,ω,v4,Cp,Cm]
@@ -457,16 +458,16 @@ function rhu(lx::Float64,ly::Float64,nx::Int,ny::Int,β::Float64,ν::Float64,u0:
     return sol
 end
 
-function barb(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,β::Float64,ν::Float64)
+function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,β::Float64,ν::Float64,u0::Array{ComplexF64,2})
 
-    u0 = rand(ComplexF64,2*ny-1,nx)
+    # u0 = rand(ComplexF64,2*ny-1,nx)
     # u0 = [1.0 2.0; 3.0 4.0; 5.0 6.0]
-    tspan = (0.0,100.0)
+    tspan = (0.0,200.0)
     ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
     Cp,Cm = gql_coeffs(lx,ly,nx,ny,Λ)
     p = [nx,ny,Λ,ω,v4,Cp,Cm]
     prob = ODEProblem(gql_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=5)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
 
     return sol
 end
@@ -551,45 +552,42 @@ end
 # global code
 lx = 2.0*Float64(pi)
 ly = 2.0*Float64(pi)
-x = LinRange(-lx,lx,2*nx-1)
-y = LinRange(-ly,ly,2*ny-1)
 nx = 10
 ny = 10
+x = LinRange(-lx,lx,2*nx-1)
+y = LinRange(-ly,ly,2*ny-1)
 Λ = 1
-β = 10.0
-ν = 0.01
+β = 1.0
+ν = 0.0
 
-# Δ1,Δ2 = nl_coeffs(lx,ly,nx,ny)
-# Γ1,Γ2 = gql_coeffs(lx,ly,nx,ny,Λ)
-# uin = randn(ComplexF64,2*ny-1,nx)
+uin = randn(ComplexF64,2*ny-1,nx)
 
+# NL solution
 u0 = uin
-sol1 = rhu(lx,ly,nx,ny,β,ν,u0)
+sol1 = exec(lx,ly,nx,ny,β,ν,u0)
 E1,Z1 = energy(lx,ly,nx,ny,sol1)
 
 uxy,umn = inversefourier(sol1,nx,ny)
 Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(x,y,uxy[:,:,20],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
-plot4time(uxy,"zeta_beta.gif",lx,ly,nx,ny)
+# plot4time(uxy,"zeta_beta.gif",lx,ly,nx,ny)
 
+# GQL solution
 u0 = uin
-sol2 = rhu(lx,ly,nx,ny,β,ν,u0)
+sol2 = exec(lx,ly,nx,ny,Λ,β,ν,u0)
 E2,Z2 = energy(lx,ly,nx,ny,sol2)
 
+uxy,umn = inversefourier(sol2,nx,ny)
+Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+Plots.plot(x,y,uxy[:,:,20],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+
+# compare energy and enstrophy curves
 Plots.plot(sol1.t,E1,linewidth=2,label="Viscosity")
 Plots.plot!(sol2.t,E2,linewidth=2,label="Hyperviscosity")
 
-uxy,umn = inversefourier(sol1,nx,ny)
-x = LinRange(-lx,lx,2*nx-1)
-y = LinRange(-ly,ly,2*ny-1)
-Plots.plot(x,y,uxy[:,:,begin],st=:contourf)
-Plots.plot(x,y,uxy[:,:,end],st=:contourf)
+# tests
 
-# sol = barb(lx,ly,nx,ny,Λ,β,ν)
-
-
-Plots.plot(sol)
 # Plots.plot(sol,vars=(0,1),linewidth=2,label="(0,-1)",legend=true)
 # Plots.plot!(sol,vars=(0,2),linewidth=2,label="(0,0)")
 # Plots.plot!(sol,vars=(0,3),linewidth=2,label="(0,1)")
@@ -597,18 +595,17 @@ Plots.plot(sol)
 # Plots.plot!(sol,vars=(0,5),linewidth=2,label="(1,0)")
 # Plots.plot!(sol,vars=(0,6),linewidth=2,label="(1,1)")
 
-opt_eqs()
+# opt_eqs()
 
-# tests
-u0 = randn(ComplexF64,2*ny-1,nx)
-tspan = (0.0,1000.0)
-Cp,Cm = nl_coeffs(lx,ly,nx,ny)
-p = [nx,ny,Cp,Cm]
+# u0 = randn(ComplexF64,2*ny-1,nx)
+# tspan = (0.0,1000.0)
+# Cp,Cm = nl_coeffs(lx,ly,nx,ny)
+# p = [nx,ny,Cp,Cm]
 
-@btime nl_coeffs(lx,ly,nx,ny)
-du = similar(u0)
-@time nl_eqs!(du,u0,p,tspan)
-@code_warntype nl_eqs!(du,u0,p,tspan)
-@code_warntype gql_eqs!(du,u0,p,tspan)
+# @btime nl_coeffs(lx,ly,nx,ny)
+# du = similar(u0)
+# @time nl_eqs!(du,u0,p,tspan)
+# @code_warntype nl_eqs!(du,u0,p,tspan)
+# @code_warntype gql_eqs!(du,u0,p,tspan)
 # integrator = init(prob,RK4())
 # step!(integrator)

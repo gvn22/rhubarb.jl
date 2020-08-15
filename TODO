@@ -1,4 +1,5 @@
-Structure for GCE2 field bilinear
+Compute point jet and force modes
+Implement parallel threads
 Array split for positive and negative n's
 Separate enstrophy and energy computation
 Compute power in modes, and use to compare NL v GQL

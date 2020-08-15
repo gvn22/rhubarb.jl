@@ -793,12 +793,16 @@ end
 # global code
 lx = 2.0*Float64(pi)
 ly = 2.0*Float64(pi)
-nx = 4
-ny = 4
+nx = 3
+ny = 3
 x = LinRange(-lx,lx,2*nx-1)
 y = LinRange(-ly,ly,2*ny-1)
 Λ = 1
-β = 0.0
+Ω = 2.0*Float64(pi)
+θ = Float64(pi)/3.0
+β = 2.0*Ω*cos(θ)
+Ξ = 0.6*Ω
+Δθ = 0.05
 ν = 0.0
 
 uin = randn(ComplexF64,2*ny-1,nx)
@@ -823,10 +827,6 @@ uxy,umn = inversefourier(sol2,nx,ny)
 Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(x,y,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
-# compare energy and enstrophy curves
-Plots.plot(sol1.t,E1,linewidth=2,label="Viscosity")
-Plots.plot!(sol2.t,E2,linewidth=2,label="Hyperviscosity")
-
 # GCE2 solution
 # uin = zeros(ComplexF64,2*ny-1,nx)
 # for m1 = 0:1:nx-1
@@ -849,16 +849,21 @@ for m1=Λ+1:1:nx-1
     end
 end
 u0 = ArrayPartition(u0_low,u0_high)
-tspan = (0.0,100.0)
+tspan = (0.0,200.0)
 ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
 Cp,Cm = gql_coeffs(lx,ly,nx,ny,Λ)
 p = [nx,ny,Λ,ω,v4,Cp,Cm]
 prob = ODEProblem(gce2_eqs!,u0,tspan,p)
-@time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=10)
+@time sol3 = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=10)
 # integrator = init(prob,RK4())
 # step!(integrator)
 
-energy(lx,ly,nx,ny,Λ,sol)
+E3,Z3 = energy(lx,ly,nx,ny,Λ,sol3)
+
+# compare energy and enstrophy curves
+Plots.plot(sol1.t,E1,linewidth=2,label="NL")
+Plots.plot!(sol2.t,E2,linewidth=2,label="GQL(1)")
+Plots.plot!(sol3.t,E3,linewidth=2,label="GCE2(1)")
 
 # tests
 # Plots.plot(sol,vars=(0,1),linewidth=2,label="(0,-1)",legend=true)
@@ -876,8 +881,8 @@ energy(lx,ly,nx,ny,Λ,sol)
 # p = [nx,ny,Cp,Cm]
 
 # @btime nl_coeffs(lx,ly,nx,ny)
-# du = similar(u0)
+du = similar(u0)
 # @time nl_eqs!(du,u0,p,tspan)
 # @code_warntype nl_eqs!(du,u0,p,tspan)
 # @code_warntype gql_eqs!(du,u0,p,tspan)
-# @code_warntype gce2_eqs!(du,u0,p,tspan)
+@code_warntype gce2_eqs!(du,u0,p,tspan)

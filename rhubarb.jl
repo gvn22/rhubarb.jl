@@ -1,4 +1,4 @@
-using OrdinaryDiffEq,RecursiveArrayTools,FFTW
+using OrdinaryDiffEq,RecursiveArrayTools,FFTW,ODEInterfaceDiffEq
 using TimerOutputs,BenchmarkTools
 using Plots; plotly()
 
@@ -175,8 +175,9 @@ function gql_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
     # Δm = []
 
     # L + L = L
-    for m1=1:1:Λ
-        for n1=-N:1:N
+    for m1=0:1:Λ
+        n1min = m1 == 0 ? 1 : -N
+        for n1=n1min:1:N
             for m2=0:1:min(m1,Λ-m1)
 
                 n2min = m2 == 0 ? 1 : -N
@@ -204,8 +205,10 @@ function gql_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
 
     # L - L = L
     # note: -L should always include (0,-n)
-    for m1=1:1:Λ
-        for n1=-N:1:N
+    for m1=0:1:Λ
+        n1min = m1 == 0 ? 1 : -N
+        for n1=n1min:1:N
+
             for m2=0:1:m1
 
                 n2min = m2 == 0 ? 1 : -N
@@ -301,6 +304,8 @@ function gql_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
         end
     end
 
+    # @show Δp
+    # @show Δm
     return Cp,Cm
 
 end
@@ -427,12 +432,10 @@ function gce2_eqs!(du,u,p,t)
     M::Int = nx - 1
     N::Int = ny - 1
 
-    dζ = fill!(similar(du.x[1]),0)
-    dΘ = fill!(similar(du.x[2]),0)
+    dζ = fill!(similar(u.x[1]),0)
+    dΘ = fill!(similar(u.x[2]),0)
 
-    temp_li = fill!(similar(du.x[2]),0)
-    temp_nl = fill!(similar(du.x[2]),0)
-
+    # low mode equations
     # linear terms: L
     for m = 0:1:Λ
         nmin = m == 0 ? 1 : -N
@@ -446,8 +449,11 @@ function gce2_eqs!(du,u,p,t)
 
     # L + L = L
     # println("L+L = L")
-    for m1=1:1:Λ
-        for n1=-N:1:N
+    for m1=0:1:Λ
+
+        n1min = m1 == 0 ? 1 : -N
+        for n1=n1min:1:N
+
             for m2=0:1:min(m1,Λ-m1)
 
                 n2min = m2 == 0 ? 1 : -N
@@ -467,8 +473,9 @@ function gce2_eqs!(du,u,p,t)
 
     # L - L = L
     # println("L-L = L")
-    for m1=1:1:Λ
-        for n1=-N:1:N
+    for m1=0:1:Λ
+        n1min = m1 == 0 ? 1 : -N
+        for n1=n1min:1:N
             for m2=0:1:m1
 
                 n2min = m2 == 0 ? 1 : -N
@@ -508,6 +515,10 @@ function gce2_eqs!(du,u,p,t)
         end
     end
 
+    # field bilinear equations
+    temp_li = fill!(similar(u.x[2]),0)
+    temp_nl = fill!(similar(u.x[2]),0)
+
     # linear terms: H
     for m = Λ+1:1:M
         for n=-N:1:N
@@ -530,7 +541,7 @@ function gce2_eqs!(du,u,p,t)
                     m::Int = m1 + m2
                     n::Int = n1 + n2
 
-                    c = Cp[n2+ny,m2+1,n1+ny,m1+1]
+                    # c = Cp[n2+ny,m2+1,n1+ny,m1+1]
                     # @show m,n,m1,n1,m2,n2,c
 
                     temp_nl[n1+ny,m1-Λ,n+ny,m-Λ] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u.x[1][n2+ny,m2+1]
@@ -552,7 +563,7 @@ function gce2_eqs!(du,u,p,t)
                     m::Int = m1 - m2
                     n::Int = n1 - n2
 
-                    c = Cm[n2+ny,m2+1,n1+ny,m1+1]
+                    # c = Cm[n2+ny,m2+1,n1+ny,m1+1]
                     # @show m,n,m1,n1,-m2,-n2,c
 
                     temp_nl[n1+ny,m1-Λ,n+ny,m-Λ] += Cm[n2+ny,m2+1,n1+ny,m1+1]*conj(u.x[1][n2+ny,m2+1])
@@ -579,6 +590,7 @@ function gce2_eqs!(du,u,p,t)
 
                             # d = temp_nl[n1+ny,m1-Λ,n+ny,m-Λ]
                             # @show m3,n3,m,n,m1,n1,d
+
                             accumulator_nl += temp_nl[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
                             # accumulator_li += temp_li[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
 
@@ -598,7 +610,7 @@ function gce2_eqs!(du,u,p,t)
                         end
                     end
 
-                    dΘ[n+ny,m-Λ,n3+ny,m3-Λ] += accumulator_nl + accumulator_li
+                    dΘ[n+ny,m-Λ,n3+ny,m3-Λ] = accumulator_nl
 
                 end
             end
@@ -606,10 +618,14 @@ function gce2_eqs!(du,u,p,t)
     end
 
     du.x[1] .= dζ
-    for m3=Λ+1:1:M
-        for n3=-N:1:N
-            for m=Λ+1:1:M
-                for n=-N:1:N
+    for n = 1:1:ny-1
+        du.x[1][n,1] = du.x[1][2*ny - n,1]
+    end
+
+    for m=Λ+1:1:M
+        for n=-N:1:N
+            for m3=Λ+1:1:M
+                for n3=-N:1:N
 
                     du.x[2][n+ny,m-Λ,n3+ny,m3-Λ] = dΘ[n+ny,m-Λ,n3+ny,m3-Λ] + conj(dΘ[n3+ny,m3-Λ,n+ny,m-Λ])
 
@@ -669,6 +685,37 @@ function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,β::Float64,ν::Fl
     p = [nx,ny,Λ,ω,v4,Cp,Cm]
     prob = ODEProblem(gql_eqs!,u0,tspan,p)
     @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+
+    return sol
+end
+
+function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,β::Float64,ν::Float64,t_end::Float64,u0::Array{ComplexF64,2})
+
+    u0_low = u0[:,1:Λ+1]
+    for n = 1:1:ny-1
+        u0_low[n,1] = u0_low[2*ny - n,1]
+    end
+    u0_high = zeros(ComplexF64,2*ny-1,nx - Λ - 1,2*ny-1,nx - Λ - 1)
+    for m1=Λ+1:1:nx-1
+        for n1=-ny+1:1:ny-1
+            for m2=Λ+1:1:nx-1
+                for n2=-ny+1:1:ny-1
+
+                    u0_high[n2+ny,m2-Λ,n1+ny,m1-Λ] = u0[n2+ny,m2+1]*conj(u0[n1+ny,m1+1])
+
+                end
+            end
+        end
+    end
+    u0 = ArrayPartition(u0_low,u0_high)
+    tspan = (0.0,t_end)
+    ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
+    Cp,Cm = gql_coeffs(lx,ly,nx,ny,Λ)
+    p = [nx,ny,Λ,ω,v4,Cp,Cm]
+    prob = ODEProblem(gce2_eqs!,u0,tspan,p)
+
+    # @time sol3 = solve(prob,Tsit5(),adaptive=true,reltol=1e-7,abstol=1e-7,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=10)
+    @time sol = solve(prob,Tsit5(),alg_hints=:stiff,dt=0.001,adaptive=false,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=10)
 
     return sol
 end
@@ -734,7 +781,7 @@ function energy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,sol)
     end
 
     Plots.plot(sol.t,E,linewidth=2,legend=true,xaxis="t",label="E (Energy)")
-    pez = Plots.plot!(sol.t,Z,linewidth=2,legend=true,xaxis="t",label="Z (Enstrophy)",yaxis="E, Z")
+    pez = Plots.plot!(sol.t,Z,linewidth=2,legend=:right,xaxis="t",label="Z (Enstrophy)",yaxis="E, Z")
 
     Plots.display(pez)
 
@@ -758,7 +805,7 @@ function inversefourier(sol,nx::Int,ny::Int)
                 umn[-n1 + ny,-m1+nx,i] = conj(sol.u[i][n1+ny,m1+1])
 
                 if n1 == 0 && m1 == 0
-                    umn[-n1 + ny,-m1+nx,i] = 0.0 + im*0.0
+                    umn[ny,nx,i] = 0.0 + im*0.0
                 end
 
             end
@@ -793,19 +840,20 @@ end
 # global code
 lx = 2.0*Float64(pi)
 ly = 2.0*Float64(pi)
-nx = 3
-ny = 3
+nx = 6
+ny = 6
 x = LinRange(-lx,lx,2*nx-1)
 y = LinRange(-ly,ly,2*ny-1)
-Λ = 1
-Ω = 2.0*Float64(pi)
+Λ = 2
+# Ω = 2.0*Float64(pi)
+Ω = 0.0
 θ = Float64(pi)/3.0
 β = 2.0*Ω*cos(θ)
 Ξ = 0.6*Ω
 Δθ = 0.05
 ν = 0.0
 
-uin = randn(ComplexF64,2*ny-1,nx)
+uin = rand(ComplexF64,2*ny-1,nx)
 
 # NL solution
 u0 = uin
@@ -828,42 +876,21 @@ Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(x,y,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
 # GCE2 solution
-# uin = zeros(ComplexF64,2*ny-1,nx)
-# for m1 = 0:1:nx-1
-#     for n1 = -ny+1:ny-1
-#         uin[n1+ny,m1+1] = (m1+ 1.0)*(n1+ny) + im*0.0
-#     end
-# end
-
-u0_low = uin[:,1:Λ+1]
-u0_high = zeros(ComplexF64,2*ny-1,nx - Λ - 1,2*ny-1,nx - Λ - 1)
-for m1=Λ+1:1:nx-1
-    for n1=-ny+1:1:ny-1
-        for m2=Λ+1:1:nx-1
-            for n2=-ny+1:1:ny-1
-
-                u0_high[n2+ny,m2-Λ,n1+ny,m1-Λ] = uin[n2+ny,m2+1]*conj(uin[n1+ny,m1+1])
-
-            end
-        end
-    end
-end
-u0 = ArrayPartition(u0_low,u0_high)
-tspan = (0.0,200.0)
-ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
-Cp,Cm = gql_coeffs(lx,ly,nx,ny,Λ)
-p = [nx,ny,Λ,ω,v4,Cp,Cm]
-prob = ODEProblem(gce2_eqs!,u0,tspan,p)
-@time sol3 = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=10)
-# integrator = init(prob,RK4())
-# step!(integrator)
-
+u0 = uin
+T = 500.00
+sol3 = exec(lx,ly,nx,ny,Λ,β,ν,T,u0)
 E3,Z3 = energy(lx,ly,nx,ny,Λ,sol3)
 
+@show sol3[end].x[1]
+integrator = init(prob,Tsit5())
+# step!(integrator)
+# @show size(sol3.u[2].x[2])
+
+
 # compare energy and enstrophy curves
-Plots.plot(sol1.t,E1,linewidth=2,label="NL")
-Plots.plot!(sol2.t,E2,linewidth=2,label="GQL(1)")
-Plots.plot!(sol3.t,E3,linewidth=2,label="GCE2(1)")
+Plots.plot!(sol1.t,E1,linewidth=2,label="NL")
+Plots.plot(sol2.t,E2,linewidth=2,label="GQL(1)")
+# Plots.plot?(sol3.t,E3,linewidth=2,label="GCE2(1)")
 
 # tests
 # Plots.plot(sol,vars=(0,1),linewidth=2,label="(0,-1)",legend=true)
@@ -881,8 +908,8 @@ Plots.plot!(sol3.t,E3,linewidth=2,label="GCE2(1)")
 # p = [nx,ny,Cp,Cm]
 
 # @btime nl_coeffs(lx,ly,nx,ny)
-du = similar(u0)
+# du = similar(u0)
 # @time nl_eqs!(du,u0,p,tspan)
 # @code_warntype nl_eqs!(du,u0,p,tspan)
 # @code_warntype gql_eqs!(du,u0,p,tspan)
-@code_warntype gce2_eqs!(du,u0,p,tspan)
+# @code_warntype gce2_eqs!(du,u0,p,tspan)

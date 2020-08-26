@@ -839,7 +839,7 @@ function ic_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,ν::Float64,
     return ζ0
 end
 
-function energy(lx,ly,nx,ny,sol)
+function energy(lx::Float64,ly::Float64,nx::Int,ny::Int,sol)
 
     E = zeros(Float64,length(sol.u))
     Z = fill!(similar(E),0)
@@ -903,6 +903,67 @@ function energy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,sol)
     pez = Plots.plot!(sol.t,Z,linewidth=2,legend=:right,xaxis="t",label="Z (Enstrophy)",yaxis="E, Z")
 
     Plots.display(pez)
+
+    return E,Z
+
+end
+
+function zonalpower(sol,lx::Float64,ly::Float64,nx::Int,ny::Int)
+
+    E = zeros(Float64,length(sol.u),nx)
+    Z = fill!(similar(E),0)
+
+    for i in eachindex(sol.u)
+
+        for m1 = 0:1:nx-1
+            n1min = m1 == 0 ? 1 : -ny + 1
+            for n1 = n1min:1:ny-1
+
+                cx,cy = (2.0*pi/lx)*m1,(2.0*pi/ly)*n1
+
+                E[i,m1+1] += abs(sol.u[i][n1 + ny,m1 + 1])^2/(cx^2 + cy^2)
+                Z[i,m1+1] += abs(sol.u[i][n1 + ny,m1 + 1])^2
+
+            end
+        end
+
+    end
+
+    return E,Z
+
+end
+
+function zonalpower(sol,lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
+
+    E = zeros(Float64,length(sol.u),nx)
+    Z = fill!(similar(E),0)
+
+    for i in eachindex(sol.u)
+
+        for m1 = 0:1:Λ
+            n1min = m1 == 0 ? 1 : -ny + 1
+            for n1 = n1min:1:ny-1
+
+                cx,cy = (2.0*pi/lx)*m1,(2.0*pi/ly)*n1
+
+                E[i,m1+1] += abs(sol.u[i].x[1][n1 + ny,m1 + 1])^2/(cx^2 + cy^2)
+                Z[i,m1+1] += abs(sol.u[i].x[1][n1 + ny,m1 + 1])^2
+
+            end
+        end
+
+        for m1 = Λ+1:1:nx-1
+            for n1 = -ny+1:1:ny-1
+
+                cx,cy = (2.0*pi/lx)*m1,(2.0*pi/ly)*n1
+
+                E[i,m1+1] += abs(sol.u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ])/(cx^2 + cy^2)
+                Z[i,m1+1] += abs(sol.u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ])
+
+            end
+        end
+
+    end
 
     return E,Z
 
@@ -1051,16 +1112,21 @@ u0 = uin
 sol1 = exec(lx,ly,nx,ny,Ω,ν,τ,u0)
 E1,Z1 = energy(lx,ly,nx,ny,sol1)
 uxy,umn = inversefourier(sol1,nx,ny)
+P1,O1 = zonalpower(sol1,lx,ly,nx,ny)
 
 Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(x,y,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
+Plots.plot(sol1.t,P1)
 # GQL solution
 u0 = uin
 u0 = ic_eqm(lx,ly,nx,ny,Ω,ν,τ) .+ uin
 
 sol2 = exec(lx,ly,nx,ny,Λ,Ω,ν,τ,u0)
 E2,Z2 = energy(lx,ly,nx,ny,sol2)
+P2,O2 = zonalpower(sol2,lx,ly,nx,ny)
+
+Plots.plot(sol2.t,P2)
 
 uxy,umn = inversefourier(sol2,nx,ny)
 Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
@@ -1070,10 +1136,15 @@ Plots.plot(x,y,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 u0 = uin
 sol3 = exec_gce2(lx,ly,nx,ny,Λ,Ω,ν,τ,u0)
 E3,Z3 = energy(lx,ly,nx,ny,Λ,sol3)
+P3,O3 = zonalpower(sol3,lx,ly,nx,ny,Λ)
+
+Plots.plot(sol3.t,P3)
 
 uxy,umn = inversefourier(sol3,nx,ny,Λ)
 Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(x,y,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+
+
 
 @show sol3
 @show sol3[end].x[1]

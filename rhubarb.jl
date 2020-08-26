@@ -819,6 +819,26 @@ function exec_gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ω::Float64,�
     return sol
 end
 
+function ic_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,ν::Float64,τ::Float64)
+
+    Ξ = 0.6*Ω
+    Δθ = 0.05
+    θ = Float64(pi)/6.0
+    β = 2.0*Ω*cos(θ)
+
+    ujet = c_coeffs(lx,ly,nx,ny,Ξ,Δθ)
+    ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
+
+    ζ0 = zeros(ComplexF64,2*ny-1,nx)
+    for n=1:1:ny-1
+
+        ζ0[n+ny,1] = -(ujet[n+ny,1]/τ)/(im*ω[n+ny,1] + v[n+ny,1])
+
+    end
+    @show ζ0
+    return ζ0
+end
+
 function energy(lx,ly,nx,ny,sol)
 
     E = zeros(Float64,length(sol.u))
@@ -922,6 +942,40 @@ function inversefourier(sol,nx::Int,ny::Int)
 
 end
 
+function inversefourier(sol,nx::Int,ny::Int,Λ::Int)
+
+    umn = zeros(ComplexF64,2*ny-1,2*nx-1,length(sol.u))
+    uff = zeros(ComplexF64,2*ny-1,2*nx-1,length(sol.u))
+    uxy = zeros(Float64,2*ny-1,2*nx-1,length(sol.u))
+
+    for i in eachindex(sol.u)
+
+        for m1 = 0:1:Λ
+            n1min = m1 == 0 ? 1 : -ny + 1
+            for n1 = n1min:1:ny-1
+
+                umn[n1 + ny,m1+nx,i] = sol.u[i].x[1][n1+ny,m1+1]
+                umn[-n1 + ny,-m1+nx,i] = conj(sol.u[i].x[1][n1+ny,m1+1])
+
+            end
+        end
+
+        umn[ny,nx,i] = 0.0 + im*0.0
+
+        uff[:,:,i] = ifft(ifftshift(umn[:,:,i]))
+
+        for m=1:1:2*nx-1
+            for n=1:1:2*ny-1
+                uxy[n,m,i] = real(uff[n,m,i])
+            end
+        end
+
+    end
+
+    return uxy,umn
+
+end
+
 function testfourier(nx::Int,ny::Int)
 
     u0xy = rand(Float64,2*ny-1,2*nx-1)
@@ -987,9 +1041,11 @@ y = LinRange(0,ly,2*ny-1)
 Ω = 2.0*Float64(pi)
 # Ω = 0.0
 ν = 10.0
-τ = 2.0
+τ = 20.0
 uin = randn(ComplexF64,2*ny-1,nx)
 
+@show uin/100.0
+u0 = ic_eqm(lx,ly,nx,ny,Ω,ν,τ) .+ uin
 # NL solution
 u0 = uin
 sol1 = exec(lx,ly,nx,ny,Ω,ν,τ,u0)
@@ -1001,6 +1057,8 @@ Plots.plot(x,y,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
 # GQL solution
 u0 = uin
+u0 = ic_eqm(lx,ly,nx,ny,Ω,ν,τ) .+ uin
+
 sol2 = exec(lx,ly,nx,ny,Λ,Ω,ν,τ,u0)
 E2,Z2 = energy(lx,ly,nx,ny,sol2)
 
@@ -1013,6 +1071,11 @@ u0 = uin
 sol3 = exec_gce2(lx,ly,nx,ny,Λ,Ω,ν,τ,u0)
 E3,Z3 = energy(lx,ly,nx,ny,Λ,sol3)
 
+uxy,umn = inversefourier(sol3,nx,ny,Λ)
+Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+Plots.plot(x,y,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+
+@show sol3
 @show sol3[end].x[1]
 integrator = init(prob,Tsit5())
 # step!(integrator)

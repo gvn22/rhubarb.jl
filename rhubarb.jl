@@ -533,6 +533,7 @@ function gce2_eqs!(du,u,p,t)
     for m = Λ+1:1:M
         for n=-N:1:N
 
+            temp_li[n+ny,m-Λ,n+ny,m-Λ] += -u.x[1][n+ny,m+1])/τ
             temp_li[n+ny,m-Λ,n+ny,m-Λ] += im*ω[n+ny,m+1]
             temp_li[n+ny,m-Λ,n+ny,m-Λ] += v[n+ny,m+1]
 
@@ -629,6 +630,8 @@ function gce2_eqs!(du,u,p,t)
         end
     end
     # du.x[2] .= dΘ
+
+    # regular intervals
     positivity!(u.x[2],lx,ly,nx,ny,Λ)
 
 end
@@ -729,10 +732,10 @@ function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,ν::Float64,τ
     Cp,Cm = nl_coeffs(lx,ly,nx,ny)
 
     p = [nx,ny,ujet,τ,ω,v4,Cp,Cm]
-    tspan = (0.0,1000.0)
+    tspan = (0.0,500.0)
 
     prob = ODEProblem(nl_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+    @time sol = solve(prob,Tsit5(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
 
     return sol
 end
@@ -749,10 +752,10 @@ function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ω::Float64,ν::Fl
     ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
     Cp,Cm = gql_coeffs(lx,ly,nx,ny,Λ)
     p = [nx,ny,Λ,ujet,τ,ω,v4,Cp,Cm]
-    tspan = (0.0,1000.0)
+    tspan = (0.0,500.0)
 
     prob = ODEProblem(gql_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+    @time sol = solve(prob,Tsit5(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
 
     return sol
 end
@@ -790,7 +793,7 @@ function exec_gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ω::Float64,�
     tspan = (0,250.0)
     prob = ODEProblem(gce2_eqs!,u0,tspan,p)
 
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+    @time sol = solve(prob,Tsit5(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
     # integrator = init(prob,Tsit5())
 
     return sol
@@ -814,7 +817,7 @@ function positivity!(cumulant::Array{ComplexF64,4},lx::Float64,ly::Float64,nx::I
 
     D = eigvals(twopoint)
     V = eigvecs(twopoint)
-    D_pos = [d = real(d) < 0 ? 0.0 + 0.0im : real(d) + 0.0im for d in D]
+    D_pos = [d = real(d) < 0.0 ? 0.0 + 0.0im : real(d) + 0.0im for d in D]
     # use mul!
     twopoint = V*(D_pos.*V')
 
@@ -1131,17 +1134,17 @@ function plot4time(var,fn::String,lx::Float64,ly::Float64,nx::Int,ny::Int)
 end
 
 # global code
-lx = 2.0*Float64(pi)
+lx = 4.0*Float64(pi)
 ly = 2.0*Float64(pi)
-nx = 4
-ny = 4
+nx = 6
+ny = 12
 x = LinRange(0,lx,2*nx-1)
 y = LinRange(0,ly,2*ny-1)
 Λ = 1
+# Ω = 2.0*Float64(pi)
 Ω = 2.0*Float64(pi)
-# Ω = 0.0
-ν = 10.0
-τ = 20.0
+ν = 1.0
+τ = 10.0*Ω
 
 uin = randn(ComplexF64,2*ny-1,nx)
 u0 = ic_eqm(lx,ly,nx,ny,Ω,ν,τ) .+ uin/100.0

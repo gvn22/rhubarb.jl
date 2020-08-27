@@ -1,6 +1,22 @@
-using OrdinaryDiffEq,FFTW
+using OrdinaryDiffEq,RecursiveArrayTools,FFTW,ODEInterfaceDiffEq,LinearAlgebra
 using TimerOutputs,BenchmarkTools
 using Plots; plotly()
+
+function c_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Ξ::Float64,Δθ::Float64)
+
+    ζ0 = zeros(Float64,2*ny-1)
+    for n in 1:1:2*ny-1
+        ζ0[n] = -Ξ*tanh((ly/2.0 - 0.5*(2*n-1)/(2*ny-1)*ly)/Δθ)
+    end
+    ζ0f = fftshift(fft(ζ0))
+
+    ζff = zeros(ComplexF64,2*ny-1,nx)
+    for n in 1:1:2*ny-1
+        ζff[n,1] = ζ0f[n]
+    end
+    return ζff
+
+end
 
 function l_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,β::Float64,ν::Float64)
 
@@ -25,7 +41,6 @@ function l_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,β::Float64,ν::Float6
 
             ω[n+ny,m+1] = β*kx/(kx^2 + ky^2)
             v[n+ny,m+1] = -ν*(kx^2 + ky^2)
-
             v4[n+ny,m+1] = -ν*((kx^2 + ky^2)/(kxmax^2 + kymax^2))^(2*α)
 
         end
@@ -105,7 +120,7 @@ end
 
 function nl_eqs!(du,u,p,t)
 
-    nx::Int,ny::Int,ω::Array{Float64,2},v::Array{Float64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
+    nx::Int,ny::Int,ujet::Array{ComplexF64,2},τ::Float64,ω::Array{Float64,2},v::Array{Float64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
     M::Int = nx - 1
     N::Int = ny - 1
 
@@ -115,6 +130,7 @@ function nl_eqs!(du,u,p,t)
         nmin = m == 0 ? 1 : -N
         for n=nmin:1:N
 
+            dζ[n+ny,m+1] += (ujet[n+ny,m+1]-u[n+ny,m+1])/τ
             dζ[n+ny,m+1] += im*ω[n+ny,m+1]*u[n+ny,m+1]
             dζ[n+ny,m+1] += v[n+ny,m+1]*u[n+ny,m+1]
 
@@ -175,8 +191,9 @@ function gql_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
     # Δm = []
 
     # L + L = L
-    for m1=1:1:Λ
-        for n1=-N:1:N
+    for m1=0:1:Λ
+        n1min = m1 == 0 ? 1 : -N
+        for n1=n1min:1:N
             for m2=0:1:min(m1,Λ-m1)
 
                 n2min = m2 == 0 ? 1 : -N
@@ -204,8 +221,10 @@ function gql_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
 
     # L - L = L
     # note: -L should always include (0,-n)
-    for m1=1:1:Λ
-        for n1=-N:1:N
+    for m1=0:1:Λ
+        n1min = m1 == 0 ? 1 : -N
+        for n1=n1min:1:N
+
             for m2=0:1:m1
 
                 n2min = m2 == 0 ? 1 : -N
@@ -301,13 +320,15 @@ function gql_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
         end
     end
 
+    # @show Δp
+    # @show Δm
     return Cp,Cm
 
 end
 
 function gql_eqs!(du,u,p,t)
 
-    nx::Int,ny::Int,Λ::Int,ω::Array{Float64,2},v::Array{Float64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
+    nx::Int,ny::Int,Λ::Int,ujet::Array{ComplexF64,2},τ::Float64,ω::Array{Float64,2},v::Array{Float64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
 
     M::Int = nx - 1
     N::Int = ny - 1
@@ -319,6 +340,7 @@ function gql_eqs!(du,u,p,t)
         nmin = m == 0 ? 1 : -N
         for n=nmin:1:N
 
+            dζ[n+ny,m+1] += (ujet[n+ny,m+1]-u[n+ny,m+1])/τ
             dζ[n+ny,m+1] += im*ω[n+ny,m+1]*u[n+ny,m+1]
             dζ[n+ny,m+1] += v[n+ny,m+1]*u[n+ny,m+1]
 
@@ -420,6 +442,200 @@ function gql_eqs!(du,u,p,t)
 
 end
 
+function gce2_eqs!(du,u,p,t)
+
+    nx::Int,ny::Int,Λ::Int,ujet::Array{ComplexF64,2},τ::Float64,ω::Array{Float64,2},v::Array{Float64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
+
+    M::Int = nx - 1
+    N::Int = ny - 1
+
+    dζ = fill!(similar(u.x[1]),0)
+    dΘ = fill!(similar(u.x[2]),0)
+
+    # low mode equations
+    # linear terms: L
+    for m = 0:1:Λ
+        nmin = m == 0 ? 1 : -N
+        for n=nmin:1:N
+
+            dζ[n+ny,m+1] += (ujet[n+ny,m+1]-u.x[1][n+ny,m+1])/τ
+            dζ[n+ny,m+1] += im*ω[n+ny,m+1]*u.x[1][n+ny,m+1]
+            dζ[n+ny,m+1] += v[n+ny,m+1]*u.x[1][n+ny,m+1]
+
+        end
+    end
+
+    # L + L = L
+    for m1=0:1:Λ
+
+        n1min = m1 == 0 ? 1 : -N
+        for n1=n1min:1:N
+
+            for m2=0:1:min(m1,Λ-m1)
+
+                n2min = m2 == 0 ? 1 : -N
+                for n2=max(n2min,-N-n1):1:min(N,N-n1)
+
+                    m::Int = m1 + m2
+                    n::Int = n1 + n2
+
+                    dζ[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u.x[1][n1+ny,m1+1]*u.x[1][n2+ny,m2+1]
+
+                end
+            end
+        end
+    end
+
+    # L - L = L
+    for m1=0:1:Λ
+        n1min = m1 == 0 ? 1 : -N
+        for n1=n1min:1:N
+            for m2=0:1:m1
+
+                n2min = m2 == 0 ? 1 : -N
+                n2max = m2 == m1 ? n1 - 1 : N
+                for n2=max(n2min,n1-N):1:min(n2max,n1+N)
+
+                    m::Int = m1 - m2
+                    n::Int = n1 - n2
+
+                    dζ[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u.x[1][n1+ny,m1+1]*conj(u.x[1][n2+ny,m2+1])
+
+                end
+            end
+        end
+    end
+
+    # H - H = L
+    for m1=Λ+1:1:M
+        for n1=-N:1:N
+            for m2=max(Λ+1,m1-Λ):1:m1
+
+                n2max = m2 == m1 ? n1 - 1 : N
+                for n2=max(-N,n1-N):1:min(n2max,n1+N)
+
+                    m::Int = m1 - m2
+                    n::Int = n1 - n2
+
+                    # note: u.x[2] contains H2*conj(H1) so H-H is conj(H2)*H1
+                    dζ[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*conj(u.x[2][n2+ny,m2-Λ,n1+ny,m1-Λ])
+
+                end
+            end
+        end
+    end
+
+    # field bilinear equations
+    temp_li = fill!(similar(u.x[2]),0)
+    temp_nl = fill!(similar(u.x[2]),0)
+
+    # linear terms: H
+    for m = Λ+1:1:M
+        for n=-N:1:N
+
+            temp_li[n+ny,m-Λ,n+ny,m-Λ] += -u.x[1][n+ny,m+1])/τ
+            temp_li[n+ny,m-Λ,n+ny,m-Λ] += im*ω[n+ny,m+1]
+            temp_li[n+ny,m-Λ,n+ny,m-Λ] += v[n+ny,m+1]
+
+        end
+    end
+
+    # H + L = H
+    # println("H+L = H")
+    for m1=Λ+1:1:M
+        for n1=-N:1:N
+            for m2=0:1:min(M-m1,Λ)
+
+                n2min = m2 == 0 ? 1 : -N
+                for n2=max(n2min,-N-n1):1:min(N,N-n1)
+
+                    m::Int = m1 + m2
+                    n::Int = n1 + n2
+
+                    temp_nl[n1+ny,m1-Λ,n+ny,m-Λ] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u.x[1][n2+ny,m2+1]
+
+                end
+            end
+        end
+    end
+
+    # H - L = H
+    for m1=Λ+1:1:M
+        for n1=-N:1:N
+            for m2=0:1:min(Λ,m1 - Λ - 1)
+
+                n2min = m2 == 0 ? 1 : -N
+                for n2=max(n2min,n1-N):1:min(N,n1+N)
+
+                    m::Int = m1 - m2
+                    n::Int = n1 - n2
+
+                    temp_nl[n1+ny,m1-Λ,n+ny,m-Λ] += Cm[n2+ny,m2+1,n1+ny,m1+1]*conj(u.x[1][n2+ny,m2+1])
+
+                end
+            end
+        end
+    end
+
+    # H'*H
+    # println("HH+")
+    for m3=Λ+1:1:M
+        for n3=-N:1:N
+            for m=Λ+1:1:M
+                for n=-N:1:N
+
+                    accumulator_nl::ComplexF64 = 0.0 + im*0.0
+                    accumulator_li::ComplexF64 = 0.0 + im*0.0
+
+                    # from H+L
+                    for m1=max(Λ+1,m-Λ):1:min(M,m)
+                        n2min = m1 == m ? 1 : -N
+                        for n1=max(-N,n-N):1:min(n-n2min,N)
+
+                            accumulator_nl += temp_nl[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
+                            accumulator_li += temp_li[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
+
+                        end
+                    end
+
+                    # from H-L
+                    for m1=max(Λ+1,m):1:min(M,m+Λ)
+                        n2max = m1 == m ? -1 : N
+                        for n1=max(-N,n-n2max):1:min(n+N,N)
+
+                            accumulator_nl += temp_nl[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
+                            accumulator_li += temp_li[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
+
+                        end
+                    end
+
+                    dΘ[n+ny,m-Λ,n3+ny,m3-Λ] = accumulator_nl + accumulator_li
+
+                end
+            end
+        end
+    end
+
+    du.x[1] .= dζ
+
+    for m=Λ+1:1:M
+        for n=-N:1:N
+            for m3=Λ+1:1:M
+                for n3=-N:1:N
+
+                    du.x[2][n+ny,m-Λ,n3+ny,m3-Λ] = dΘ[n+ny,m-Λ,n3+ny,m3-Λ] + conj(dΘ[n3+ny,m3-Λ,n+ny,m-Λ])
+
+                end
+            end
+        end
+    end
+    # du.x[2] .= dΘ
+
+    # regular intervals
+    positivity!(u.x[2],lx,ly,nx,ny,Λ)
+
+end
+
 function opt_eqs()
 
     samples = 7
@@ -462,7 +678,7 @@ function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,β::Float64,ν::Fl
 
     # u0 = rand(ComplexF64,2*ny-1,nx)
     # u0 = [1.0 2.0; 3.0 4.0; 5.0 6.0]
-    tspan = (0.0,200.0)
+    tspan = (0.0,1000.0)
     ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
     Cp,Cm = gql_coeffs(lx,ly,nx,ny,Λ)
     p = [nx,ny,Λ,ω,v4,Cp,Cm]
@@ -472,7 +688,175 @@ function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,β::Float64,ν::Fl
     return sol
 end
 
-function energy(lx,ly,nx,ny,sol)
+function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,β::Float64,ν::Float64,t_end::Float64,u0::Array{ComplexF64,2})
+
+    u0_low = u0[:,1:Λ+1]
+    for n = 1:1:ny-1
+        u0_low[n,1] = u0_low[2*ny - n,1]
+    end
+    u0_high = zeros(ComplexF64,2*ny-1,nx - Λ - 1,2*ny-1,nx - Λ - 1)
+    for m1=Λ+1:1:nx-1
+        for n1=-ny+1:1:ny-1
+            for m2=Λ+1:1:nx-1
+                for n2=-ny+1:1:ny-1
+
+                    u0_high[n2+ny,m2-Λ,n1+ny,m1-Λ] = u0[n2+ny,m2+1]*conj(u0[n1+ny,m1+1])
+
+                end
+            end
+        end
+    end
+    u0 = ArrayPartition(u0_low,u0_high)
+    tspan = (0.0,t_end)
+    ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
+    Cp,Cm = gql_coeffs(lx,ly,nx,ny,Λ)
+    p = [nx,ny,Λ,ω,v4,Cp,Cm]
+    prob = ODEProblem(gce2_eqs!,u0,tspan,p)
+
+    # @time sol3 = solve(prob,Tsit5(),adaptive=true,reltol=1e-7,abstol=1e-7,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=10)
+    @time sol = solve(prob,Tsit5(),alg_hints=:stiff,dt=0.001,adaptive=false,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=10)
+
+    return sol
+end
+
+# solve NL
+function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,ν::Float64,τ::Float64,u0::Array{ComplexF64,2})
+
+    Ξ = 0.6*Ω
+    Δθ = 0.05
+    θ = Float64(pi)/6.0
+    β = 2.0*Ω*cos(θ)
+
+    ujet = c_coeffs(lx,ly,nx,ny,Ξ,Δθ)
+    ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
+    Cp,Cm = nl_coeffs(lx,ly,nx,ny)
+
+    p = [nx,ny,ujet,τ,ω,v4,Cp,Cm]
+    tspan = (0.0,500.0)
+
+    prob = ODEProblem(nl_eqs!,u0,tspan,p)
+    @time sol = solve(prob,Tsit5(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+
+    return sol
+end
+
+# solve GQL
+function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ω::Float64,ν::Float64,τ::Float64,u0::Array{ComplexF64,2})
+
+    Ξ = 0.6*Ω
+    Δθ = 0.05
+    θ = Float64(pi)/6.0
+    β = 2.0*Ω*cos(θ)
+
+    ujet = c_coeffs(lx,ly,nx,ny,Ξ,Δθ)
+    ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
+    Cp,Cm = gql_coeffs(lx,ly,nx,ny,Λ)
+    p = [nx,ny,Λ,ujet,τ,ω,v4,Cp,Cm]
+    tspan = (0.0,500.0)
+
+    prob = ODEProblem(gql_eqs!,u0,tspan,p)
+    @time sol = solve(prob,Tsit5(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+
+    return sol
+end
+
+# solve GCE2
+function exec_gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ω::Float64,ν::Float64,τ::Float64,u0::Array{ComplexF64,2})
+
+    Ξ = 0.6*Ω
+    Δθ = 0.05
+    θ = Float64(pi)/6.0
+    β = 2.0*Ω*cos(θ)
+
+    u0_low = u0[:,1:Λ+1]
+    for n = 1:1:ny-1
+        u0_low[n,1] = u0_low[2*ny - n,1]
+    end
+    u0_high = zeros(ComplexF64,2*ny-1,nx - Λ - 1,2*ny-1,nx - Λ - 1)
+    for m1=Λ+1:1:nx-1
+        for n1=-ny+1:1:ny-1
+            for m2=Λ+1:1:nx-1
+                for n2=-ny+1:1:ny-1
+
+                    u0_high[n2+ny,m2-Λ,n1+ny,m1-Λ] = u0[n2+ny,m2+1]*conj(u0[n1+ny,m1+1])
+
+                end
+            end
+        end
+    end
+    u0 = ArrayPartition(u0_low,u0_high)
+
+    ujet = c_coeffs(lx,ly,nx,ny,Ξ,Δθ)
+    ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
+    Cp,Cm = gql_coeffs(lx,ly,nx,ny,Λ)
+    p = [nx,ny,Λ,ujet,τ,ω,v4,Cp,Cm]
+    tspan = (0,250.0)
+    prob = ODEProblem(gce2_eqs!,u0,tspan,p)
+
+    @time sol = solve(prob,Tsit5(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+    # integrator = init(prob,Tsit5())
+
+    return sol
+end
+
+function positivity!(cumulant::Array{ComplexF64,4},lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
+
+    twopoint = zeros(ComplexF64,(2*ny-1)*nx,(2*ny-1)*nx)
+
+    for m=Λ+1:1:nx-1
+        for n=-ny+1:1:ny-1
+            for m3=Λ+1:1:nx-1
+                for n3=-ny+1:1:ny-1
+
+                    twopoint[(n+ny)*(nx-1) + m-Λ,(n3+ny)*(nx-1) + m3-Λ] = cumulant[n+ny,m-Λ,n3+ny,m3-Λ]
+
+                end
+            end
+        end
+    end
+
+    D = eigvals(twopoint)
+    V = eigvecs(twopoint)
+    D_pos = [d = real(d) < 0.0 ? 0.0 + 0.0im : real(d) + 0.0im for d in D]
+    # use mul!
+    twopoint = V*(D_pos.*V')
+
+    for m=Λ+1:1:nx-1
+        for n=-ny+1:1:ny-1
+            for m3=Λ+1:1:nx-1
+                for n3=-ny+1:1:ny-1
+
+                     cumulant[n+ny,m-Λ,n3+ny,m3-Λ] = twopoint[(n+ny)*(nx-1) + m-Λ,(n3+ny)*(nx-1) + m3-Λ]
+
+                end
+            end
+        end
+    end
+    nothing
+end
+
+function ic_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,ν::Float64,τ::Float64)
+
+    Ξ = 0.6*Ω
+    Δθ = 0.05
+    θ = Float64(pi)/6.0
+    β = 2.0*Ω*cos(θ)
+
+    ujet = c_coeffs(lx,ly,nx,ny,Ξ,Δθ)
+    ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
+
+    ζ0 = zeros(ComplexF64,2*ny-1,nx)
+    for n=1:1:ny-1
+
+        ζ0[n+ny,1] = -(ujet[n+ny,1]/τ)/(im*ω[n+ny,1] + v[n+ny,1])
+
+    end
+
+    return ζ0
+end
+
+# energy for NL/GQL
+function energy(lx::Float64,ly::Float64,nx::Int,ny::Int,sol)
 
     E = zeros(Float64,length(sol.u))
     Z = fill!(similar(E),0)
@@ -492,12 +876,154 @@ function energy(lx,ly,nx,ny,sol)
         end
     end
 
-    Plots.plot(sol.t,E,linewidth=2,legend=true,xaxis="t",label="E (Energy)")
-    pez = Plots.plot!(sol.t,Z,linewidth=2,legend=true,xaxis="t",label="Z (Enstrophy)",yaxis="E, Z")
+    return E,Z
 
-    Plots.display(pez)
+end
+
+# energy for GCE2
+function energy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,sol)
+
+    E = zeros(Float64,length(sol.u))
+    Z = fill!(similar(E),0)
+
+    for i in eachindex(sol.u)
+
+        for m1 = 0:1:Λ
+            n1min = m1 == 0 ? 1 : -ny + 1
+            for n1 = n1min:1:ny-1
+
+                cx,cy = (2.0*pi/lx)*m1,(2.0*pi/ly)*n1
+
+                E[i] += abs(sol.u[i].x[1][n1 + ny,m1 + 1])^2/(cx^2 + cy^2)
+                Z[i] += abs(sol.u[i].x[1][n1 + ny,m1 + 1])^2
+
+            end
+        end
+
+        for m1 = Λ+1:1:nx-1
+            for n1 = -ny+1:1:ny-1
+
+                cx,cy = (2.0*pi/lx)*m1,(2.0*pi/ly)*n1
+
+                E[i] += abs(sol.u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ])/(cx^2 + cy^2)
+                Z[i] += abs(sol.u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ])
+
+            end
+        end
+    end
 
     return E,Z
+
+end
+
+# zonal power in NL/GQL
+function zonalpower(sol,lx::Float64,ly::Float64,nx::Int,ny::Int)
+
+    E = zeros(Float64,length(sol.u),nx)
+    Z = fill!(similar(E),0)
+
+    for i in eachindex(sol.u)
+
+        for m1 = 0:1:nx-1
+            n1min = m1 == 0 ? 1 : -ny + 1
+            for n1 = n1min:1:ny-1
+
+                cx,cy = (2.0*pi/lx)*m1,(2.0*pi/ly)*n1
+
+                E[i,m1+1] += abs(sol.u[i][n1 + ny,m1 + 1])^2/(cx^2 + cy^2)
+                Z[i,m1+1] += abs(sol.u[i][n1 + ny,m1 + 1])^2
+
+            end
+        end
+
+    end
+
+    return E,Z
+
+end
+
+# zonal power in GCE2
+function zonalpower(sol,lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
+
+    E = zeros(Float64,length(sol.u),nx)
+    Z = fill!(similar(E),0)
+
+    for i in eachindex(sol.u)
+
+        for m1 = 0:1:Λ
+            n1min = m1 == 0 ? 1 : -ny + 1
+            for n1 = n1min:1:ny-1
+
+                cx,cy = (2.0*pi/lx)*m1,(2.0*pi/ly)*n1
+
+                E[i,m1+1] += abs(sol.u[i].x[1][n1 + ny,m1 + 1])^2/(cx^2 + cy^2)
+                Z[i,m1+1] += abs(sol.u[i].x[1][n1 + ny,m1 + 1])^2
+
+            end
+        end
+
+        for m1 = Λ+1:1:nx-1
+            for n1 = -ny+1:1:ny-1
+
+                cx,cy = (2.0*pi/lx)*m1,(2.0*pi/ly)*n1
+
+                E[i,m1+1] += abs(sol.u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ])/(cx^2 + cy^2)
+                Z[i,m1+1] += abs(sol.u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ])
+
+            end
+        end
+
+    end
+
+    return E,Z
+
+end
+
+# mean vorticity NL/GQL
+function meanvorticity(sol,lx::Float64,ly::Float64,nx::Int,ny::Int)
+
+    ζf = zeros(ComplexF64,length(sol.u),2*ny-1)
+    ζy = zeros(Float64,length(sol.u),2*ny-1)
+
+    for i in eachindex(sol.u)
+
+        for n1 = 1:1:ny-1
+
+            ζf[i,n1+ny] = sol.u[i][n1+ny,1]
+            ζf[i,-n1+ny] = conj(sol.u[i][-n1+ny,1])
+
+        end
+
+        ζf[i,ny] = 0.0 + 0.0im
+        ζy[i,:] .= real(ifft(ifftshift(ζf[i,:])))
+
+    end
+
+    return ζy
+
+end
+
+# mean vorticity GCE2
+function meanvorticity(sol,lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
+
+    ζf = zeros(ComplexF64,length(sol.u),2*ny-1)
+    ζy = zeros(Float64,length(sol.u),2*ny-1)
+
+    for i in eachindex(sol.u)
+
+        for n1 = 1:1:ny-1
+
+            ζf[i,n1+ny] = sol.u[i].x[1][n1+ny,1]
+            ζf[i,-n1+ny] = conj(sol.u[i].x[1][-n1+ny,1])
+
+        end
+
+        ζf[i,ny] = 0.0 + 0.0im
+        ζy[i,:] .= real(ifft(ifftshift(ζf[i,:])))
+
+    end
+
+    return ζy
 
 end
 
@@ -516,24 +1042,82 @@ function inversefourier(sol,nx::Int,ny::Int)
                 umn[n1 + ny,m1+nx,i] = sol.u[i][n1+ny,m1+1]
                 umn[-n1 + ny,-m1+nx,i] = conj(sol.u[i][n1+ny,m1+1])
 
-                if n1 == 0 && m1 == 0
-                    umn[-n1 + ny,-m1+nx,i] = 0.0 + im*0.0
-                end
-
             end
         end
+
+        umn[ny,nx,i] = 0.0 + im*0.0
 
         uff[:,:,i] = ifft(ifftshift(umn[:,:,i]))
 
         for m=1:1:2*nx-1
             for n=1:1:2*ny-1
-                uxy[m,n,i] = real(uff[n,m,i])
+                uxy[n,m,i] = real(uff[n,m,i])
             end
         end
 
     end
 
-    return uxy,uff
+    return uxy,umn
+
+end
+
+function inversefourier(sol,nx::Int,ny::Int,Λ::Int)
+
+    umn = zeros(ComplexF64,2*ny-1,2*nx-1,length(sol.u))
+    uff = zeros(ComplexF64,2*ny-1,2*nx-1,length(sol.u))
+    uxy = zeros(Float64,2*ny-1,2*nx-1,length(sol.u))
+
+    for i in eachindex(sol.u)
+
+        for m1 = 0:1:Λ
+            n1min = m1 == 0 ? 1 : -ny + 1
+            for n1 = n1min:1:ny-1
+
+                umn[n1 + ny,m1+nx,i] = sol.u[i].x[1][n1+ny,m1+1]
+                umn[-n1 + ny,-m1+nx,i] = conj(sol.u[i].x[1][n1+ny,m1+1])
+
+            end
+        end
+
+        umn[ny,nx,i] = 0.0 + im*0.0
+
+        uff[:,:,i] = ifft(ifftshift(umn[:,:,i]))
+
+        for m=1:1:2*nx-1
+            for n=1:1:2*ny-1
+                uxy[n,m,i] = real(uff[n,m,i])
+            end
+        end
+
+    end
+
+    return uxy,umn
+
+end
+
+function testfourier(nx::Int,ny::Int)
+
+    u0xy = rand(Float64,2*ny-1,2*nx-1)
+    uff = fftshift(fft(u0xy))
+
+    umn = zeros(ComplexF64,2*ny-1,2*nx-1)
+    uxy = zeros(Float64,2*ny-1,2*nx-1)
+    uxy2 = zeros(Float64,2*ny-1,2*nx-1)
+
+    for m1 = 0:1:nx-1
+        n1min = m1 == 0 ? 1 : -ny + 1
+        for n1 = n1min:1:ny-1
+
+            umn[n1 + ny,m1+nx] = uff[n1+ny,m1+nx]
+            umn[-n1 + ny,-m1+nx] = conj(uff[n1+ny,m1+nx])
+
+        end
+    end
+
+    uxy .= real(ifft(ifftshift(umn)))
+    uxy2 .= real(ifft(ifftshift(uff)))
+
+    return u0xy,uxy,uxy2
 
 end
 
@@ -550,62 +1134,74 @@ function plot4time(var,fn::String,lx::Float64,ly::Float64,nx::Int,ny::Int)
 end
 
 # global code
-lx = 2.0*Float64(pi)
+lx = 4.0*Float64(pi)
 ly = 2.0*Float64(pi)
-nx = 10
-ny = 10
-x = LinRange(-lx,lx,2*nx-1)
-y = LinRange(-ly,ly,2*ny-1)
+nx = 6
+ny = 12
+x = LinRange(0,lx,2*nx-1)
+y = LinRange(0,ly,2*ny-1)
 Λ = 1
-β = 1.0
-ν = 0.0
+# Ω = 2.0*Float64(pi)
+Ω = 2.0*Float64(pi)
+ν = 1.0
+τ = 10.0*Ω
 
 uin = randn(ComplexF64,2*ny-1,nx)
+u0 = ic_eqm(lx,ly,nx,ny,Ω,ν,τ) .+ uin/100.0
 
 # NL solution
-u0 = uin
-sol1 = exec(lx,ly,nx,ny,β,ν,u0)
+sol1 = exec(lx,ly,nx,ny,Ω,ν,τ,u0)
 E1,Z1 = energy(lx,ly,nx,ny,sol1)
-
-uxy,umn = inversefourier(sol1,nx,ny)
-Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-Plots.plot(x,y,uxy[:,:,20],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-
-# plot4time(uxy,"zeta_beta.gif",lx,ly,nx,ny)
+P1,O1 = zonalpower(sol1,lx,ly,nx,ny)
+A1 = meanvorticity(sol1,lx,ly,nx,ny)
 
 # GQL solution
-u0 = uin
-sol2 = exec(lx,ly,nx,ny,Λ,β,ν,u0)
+sol2 = exec(lx,ly,nx,ny,Λ,Ω,ν,τ,u0)
 E2,Z2 = energy(lx,ly,nx,ny,sol2)
+P2,O2 = zonalpower(sol2,lx,ly,nx,ny)
+A2 = meanvorticity(sol2,lx,ly,nx,ny)
+
+# GCE2 solution
+sol3 = exec_gce2(lx,ly,nx,ny,Λ,Ω,ν,τ,u0)
+E3,Z3 = energy(lx,ly,nx,ny,Λ,sol3)
+P3,O3 = zonalpower(sol3,lx,ly,nx,ny,Λ)
+A3 = meanvorticity(sol3,lx,ly,nx,ny,Λ)
+
+# compare curves
+Plots.plot(sol1.t,E1,linewidth=2,label="NL")
+Plots.plot!(sol2.t,E2,linewidth=2,label="GQL(1)")
+Plots.plot!(sol3.t,E3,linewidth=2,label="GCE2(1)")
+
+Plots.plot(y,A1[end,:],linewidth=2,label="NL")
+Plots.plot!(y,A2[end,:],linewidth=2,label="GQL(1)")
+Plots.plot!(y,A3[end,:],linewidth=2,label="GCE2(1)",legend=:right)
+
+Plots.plot(sol1.t,P1,linewidth=2)
+Plots.plot(sol2.t,P2,linewidth=2)
+Plots.plot(sol3.t,P3,linewidth=2)
+
+# mean vorticity with time
+Plots.plot(sol1.t,y,A1',st=:contourf,color=:bwr,xaxis="t",yaxis="y")
+Plots.plot(sol2.t,y,A2',st=:contourf,color=:bwr,xaxis="t",yaxis="y")
+Plots.plot(sol3.t,y,A3',st=:contourf,color=:bwr,xaxis="t",yaxis="y")
+
+# vorticity
+uxy,umn = inversefourier(sol1,nx,ny)
+Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+Plots.plot(x,y,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
 uxy,umn = inversefourier(sol2,nx,ny)
 Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-Plots.plot(x,y,uxy[:,:,20],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+Plots.plot(x,y,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
-# compare energy and enstrophy curves
-Plots.plot(sol1.t,E1,linewidth=2,label="Viscosity")
-Plots.plot!(sol2.t,E2,linewidth=2,label="Hyperviscosity")
+uxy,umn = inversefourier(sol3,nx,ny,Λ)
+Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+Plots.plot(x,y,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
-# tests
-
-# Plots.plot(sol,vars=(0,1),linewidth=2,label="(0,-1)",legend=true)
-# Plots.plot!(sol,vars=(0,2),linewidth=2,label="(0,0)")
-# Plots.plot!(sol,vars=(0,3),linewidth=2,label="(0,1)")
-# Plots.plot!(sol,vars=(0,4),linewidth=2,label="(1,-1)")
-# Plots.plot!(sol,vars=(0,5),linewidth=2,label="(1,0)")
-# Plots.plot!(sol,vars=(0,6),linewidth=2,label="(1,1)")
-
+# type stability checks
 # opt_eqs()
-
-# u0 = randn(ComplexF64,2*ny-1,nx)
-# tspan = (0.0,1000.0)
-# Cp,Cm = nl_coeffs(lx,ly,nx,ny)
-# p = [nx,ny,Cp,Cm]
-
 # @btime nl_coeffs(lx,ly,nx,ny)
 # du = similar(u0)
-# @time nl_eqs!(du,u0,p,tspan)
 # @code_warntype nl_eqs!(du,u0,p,tspan)
 # @code_warntype gql_eqs!(du,u0,p,tspan)
-# integrator = init(prob,RK4())
-# step!(integrator)
+# @code_warntype gce2_eqs!(du,u0,p,tspan)

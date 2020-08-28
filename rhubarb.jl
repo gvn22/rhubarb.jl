@@ -1,4 +1,4 @@
-using OrdinaryDiffEq,RecursiveArrayTools,FFTW,ODEInterfaceDiffEq,LinearAlgebra
+using OrdinaryDiffEq,RecursiveArrayTools,FFTW,ODEInterfaceDiffEq,LinearAlgebra,DifferentialEquations
 using TimerOutputs,BenchmarkTools
 using Plots; plotly()
 
@@ -631,9 +631,66 @@ function gce2_eqs!(du,u,p,t)
     end
     # du.x[2] .= dΘ
 
-    # regular intervals
-    positivity!(u.x[2],lx,ly,nx,ny,Λ)
+    # regular intervals! use callback
+    # positivity!(u.x[2],lx,ly,nx,ny,Λ)
 
+end
+
+function ispositive(cumulant::Array{ComplexF64,4},nx::Int,ny::Int,Λ::Int)
+
+    twopoint = zeros(ComplexF64,(2*ny-1)*nx,(2*ny-1)*nx)
+
+    for m=Λ+1:1:nx-1
+        for n=-ny+1:1:ny-1
+            for m3=Λ+1:1:nx-1
+                for n3=-ny+1:1:ny-1
+
+                    twopoint[(n+ny)*(nx-1) + m-Λ,(n3+ny)*(nx-1) + m3-Λ] = cumulant[n+ny,m-Λ,n3+ny,m3-Λ]
+
+                end
+            end
+        end
+    end
+
+    return isposdef(twopoint)
+
+end
+
+function positivity!(cumulant::Array{ComplexF64,4},nx::Int,ny::Int,Λ::Int)
+
+    println("Two-point correlation is not positive definite...")
+    twopoint = zeros(ComplexF64,(2*ny-1)*nx,(2*ny-1)*nx)
+
+    for m=Λ+1:1:nx-1
+        for n=-ny+1:1:ny-1
+            for m3=Λ+1:1:nx-1
+                for n3=-ny+1:1:ny-1
+
+                    twopoint[(n+ny)*(nx-1) + m-Λ,(n3+ny)*(nx-1) + m3-Λ] = cumulant[n+ny,m-Λ,n3+ny,m3-Λ]
+
+                end
+            end
+        end
+    end
+
+    D = eigvals(twopoint)
+    V = eigvecs(twopoint)
+    D_pos = [d = real(d) < 0.0 ? 0.0 + 0.0im : real(d) + 0.0im for d in D]
+    # use mul!
+    twopoint = V*(D_pos.*V')
+
+    for m=Λ+1:1:nx-1
+        for n=-ny+1:1:ny-1
+            for m3=Λ+1:1:nx-1
+                for n3=-ny+1:1:ny-1
+
+                     cumulant[n+ny,m-Λ,n3+ny,m3-Λ] = twopoint[(n+ny)*(nx-1) + m-Λ,(n3+ny)*(nx-1) + m3-Λ]
+
+                end
+            end
+        end
+    end
+    nothing
 end
 
 function opt_eqs()
@@ -793,46 +850,16 @@ function exec_gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ω::Float64,�
     tspan = (0,250.0)
     prob = ODEProblem(gce2_eqs!,u0,tspan,p)
 
-    @time sol = solve(prob,Tsit5(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+    # callback for positivity checks on twopoint correlation
+    poschecktimes = LinRange(1.0,tspan[2],10)
+    condition(u,t,integrator) = t ∈ poschecktimes && !(ispositive(u.x[2]))
+    affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
+    cb = PresetTimeCallback(poschecktimes,affect!)
+
+    @time sol = solve(prob,Tsit5(),callback=cb,adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
     # integrator = init(prob,Tsit5())
 
     return sol
-end
-
-function positivity!(cumulant::Array{ComplexF64,4},lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
-
-    twopoint = zeros(ComplexF64,(2*ny-1)*nx,(2*ny-1)*nx)
-
-    for m=Λ+1:1:nx-1
-        for n=-ny+1:1:ny-1
-            for m3=Λ+1:1:nx-1
-                for n3=-ny+1:1:ny-1
-
-                    twopoint[(n+ny)*(nx-1) + m-Λ,(n3+ny)*(nx-1) + m3-Λ] = cumulant[n+ny,m-Λ,n3+ny,m3-Λ]
-
-                end
-            end
-        end
-    end
-
-    D = eigvals(twopoint)
-    V = eigvecs(twopoint)
-    D_pos = [d = real(d) < 0.0 ? 0.0 + 0.0im : real(d) + 0.0im for d in D]
-    # use mul!
-    twopoint = V*(D_pos.*V')
-
-    for m=Λ+1:1:nx-1
-        for n=-ny+1:1:ny-1
-            for m3=Λ+1:1:nx-1
-                for n3=-ny+1:1:ny-1
-
-                     cumulant[n+ny,m-Λ,n3+ny,m3-Λ] = twopoint[(n+ny)*(nx-1) + m-Λ,(n3+ny)*(nx-1) + m3-Λ]
-
-                end
-            end
-        end
-    end
-    nothing
 end
 
 function ic_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,ν::Float64,τ::Float64)
@@ -1134,17 +1161,18 @@ function plot4time(var,fn::String,lx::Float64,ly::Float64,nx::Int,ny::Int)
 end
 
 # global code
-lx = 4.0*Float64(pi)
-ly = 2.0*Float64(pi)
-nx = 6
-ny = 12
+lx::Float64 = 4.0*Float64(pi)
+ly::Float64 = 2.0*Float64(pi)
+nx::Int = 4
+ny::Int = 4
 x = LinRange(0,lx,2*nx-1)
 y = LinRange(0,ly,2*ny-1)
-Λ = 1
+
+Λ::Int = 1
 # Ω = 2.0*Float64(pi)
-Ω = 2.0*Float64(pi)
-ν = 1.0
-τ = 10.0*Ω
+Ω::Float64 = 2.0*Float64(pi)
+ν::Float64 = 1.0
+τ::Float64 = 10.0/Ω
 
 uin = randn(ComplexF64,2*ny-1,nx)
 u0 = ic_eqm(lx,ly,nx,ny,Ω,ν,τ) .+ uin/100.0
@@ -1174,7 +1202,7 @@ Plots.plot!(sol3.t,E3,linewidth=2,label="GCE2(1)")
 
 Plots.plot(y,A1[end,:],linewidth=2,label="NL")
 Plots.plot!(y,A2[end,:],linewidth=2,label="GQL(1)")
-Plots.plot!(y,A3[end,:],linewidth=2,label="GCE2(1)",legend=:right)
+Plots.plot(y,A3[end,:],linewidth=2,label="GCE2(1)",legend=:right)
 
 Plots.plot(sol1.t,P1,linewidth=2)
 Plots.plot(sol2.t,P2,linewidth=2)

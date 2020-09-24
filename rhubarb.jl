@@ -466,7 +466,7 @@ function gce2_eqs!(du,u,p,t)
     end
 
     # L + L = L
-    for m1=0:1:Λ
+    for m1=1:1:Λ
 
         n1min = m1 == 0 ? 1 : -N
         for n1=n1min:1:N
@@ -487,7 +487,7 @@ function gce2_eqs!(du,u,p,t)
     end
 
     # L - L = L
-    for m1=0:1:Λ
+    for m1=1:1:Λ
         n1min = m1 == 0 ? 1 : -N
         for n1=n1min:1:N
             for m2=0:1:m1
@@ -533,7 +533,7 @@ function gce2_eqs!(du,u,p,t)
     for m = Λ+1:1:M
         for n=-N:1:N
 
-            temp_li[n+ny,m-Λ,n+ny,m-Λ] += -u.x[1][n+ny,m+1])/τ
+            temp_li[n+ny,m-Λ,n+ny,m-Λ] += -1.0/τ
             temp_li[n+ny,m-Λ,n+ny,m-Λ] += im*ω[n+ny,m+1]
             temp_li[n+ny,m-Λ,n+ny,m-Λ] += v[n+ny,m+1]
 
@@ -584,8 +584,8 @@ function gce2_eqs!(du,u,p,t)
             for m=Λ+1:1:M
                 for n=-N:1:N
 
-                    accumulator_nl::ComplexF64 = 0.0 + im*0.0
-                    accumulator_li::ComplexF64 = 0.0 + im*0.0
+                    accumulator_nl::ComplexF64 = 0.0 + 0.0im
+                    accumulator_li::ComplexF64 = 0.0 + 0.0im
 
                     # from H+L
                     for m1=max(Λ+1,m-Λ):1:min(M,m)
@@ -595,7 +595,7 @@ function gce2_eqs!(du,u,p,t)
                             accumulator_nl += temp_nl[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
                             accumulator_li += temp_li[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
 
-                        end
+                        end§
                     end
 
                     # from H-L
@@ -630,7 +630,6 @@ function gce2_eqs!(du,u,p,t)
         end
     end
     # du.x[2] .= dΘ
-
     # regular intervals! use callback
     # positivity!(u.x[2],lx,ly,nx,ny,Λ)
 
@@ -675,7 +674,7 @@ function positivity!(cumulant::Array{ComplexF64,4},nx::Int,ny::Int,Λ::Int)
 
     D = eigvals(twopoint)
     V = eigvecs(twopoint)
-    D_pos = [d = real(d) < 0.0 ? 0.0 + 0.0im : real(d) + 0.0im for d in D]
+    D_pos = [d = real(d) < 0.0 ? 0.0 + imag(d)*im : real(d) + imag(d)*im for d in D]
     # use mul!
     twopoint = V*(D_pos.*V')
 
@@ -690,7 +689,7 @@ function positivity!(cumulant::Array{ComplexF64,4},nx::Int,ny::Int,Λ::Int)
             end
         end
     end
-    nothing
+
 end
 
 function opt_eqs()
@@ -771,7 +770,7 @@ function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,β::Float64,ν::Fl
     prob = ODEProblem(gce2_eqs!,u0,tspan,p)
 
     # @time sol3 = solve(prob,Tsit5(),adaptive=true,reltol=1e-7,abstol=1e-7,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=10)
-    @time sol = solve(prob,Tsit5(),alg_hints=:stiff,dt=0.001,adaptive=false,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=10)
+    @time sol = solve(prob,RK4(),alg_hints=:stiff,dt=0.001,adaptive=false,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=10)
 
     return sol
 end
@@ -792,7 +791,7 @@ function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,ν::Float64,τ
     tspan = (0.0,500.0)
 
     prob = ODEProblem(nl_eqs!,u0,tspan,p)
-    @time sol = solve(prob,Tsit5(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
 
     return sol
 end
@@ -812,7 +811,7 @@ function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ω::Float64,ν::Fl
     tspan = (0.0,500.0)
 
     prob = ODEProblem(gql_eqs!,u0,tspan,p)
-    @time sol = solve(prob,Tsit5(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
 
     return sol
 end
@@ -847,16 +846,15 @@ function exec_gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ω::Float64,�
     ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
     Cp,Cm = gql_coeffs(lx,ly,nx,ny,Λ)
     p = [nx,ny,Λ,ujet,τ,ω,v4,Cp,Cm]
-    tspan = (0,250.0)
+    tspan = (0,500.0)
     prob = ODEProblem(gce2_eqs!,u0,tspan,p)
 
-    # callback for positivity checks on twopoint correlation
-    poschecktimes = LinRange(1.0,tspan[2],10)
-    condition(u,t,integrator) = t ∈ poschecktimes && !(ispositive(u.x[2]))
+    poschecktimes = LinRange(1.0,tspan[2],50)
+    condition(u,t,integrator) = t ∈ poschecktimes && !ispositive(u.x[2],nx,ny,Λ)
     affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
     cb = PresetTimeCallback(poschecktimes,affect!)
 
-    @time sol = solve(prob,Tsit5(),callback=cb,adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+    @time sol = solve(prob,RK4(),callback=cb,adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
     # integrator = init(prob,Tsit5())
 
     return sol
@@ -1161,21 +1159,22 @@ function plot4time(var,fn::String,lx::Float64,ly::Float64,nx::Int,ny::Int)
 end
 
 # global code
-lx::Float64 = 4.0*Float64(pi)
-ly::Float64 = 2.0*Float64(pi)
-nx::Int = 4
-ny::Int = 4
-x = LinRange(0,lx,2*nx-1)
-y = LinRange(0,ly,2*ny-1)
+lx = 4.0*Float64(pi)
+ly = 2.0*Float64(pi)
+nx = 12
+ny = 10
+xx = LinRange(0,lx,2*nx-1)
+yy = LinRange(0,ly,2*ny-1)
 
-Λ::Int = 1
+Λ = 1
 # Ω = 2.0*Float64(pi)
-Ω::Float64 = 2.0*Float64(pi)
-ν::Float64 = 1.0
-τ::Float64 = 10.0/Ω
+Ω = 1.0
+ν = 1.0
+τ = 10.0
 
 uin = randn(ComplexF64,2*ny-1,nx)
 u0 = ic_eqm(lx,ly,nx,ny,Ω,ν,τ) .+ uin/100.0
+# u0 = uin
 
 # NL solution
 sol1 = exec(lx,ly,nx,ny,Ω,ν,τ,u0)
@@ -1196,17 +1195,17 @@ P3,O3 = zonalpower(sol3,lx,ly,nx,ny,Λ)
 A3 = meanvorticity(sol3,lx,ly,nx,ny,Λ)
 
 # compare curves
-Plots.plot(sol1.t,E1,linewidth=2,label="NL")
+Plots.plot(sol1.t,E1,linewidth=2,legend=:bottom,label="NL")
 Plots.plot!(sol2.t,E2,linewidth=2,label="GQL(1)")
 Plots.plot!(sol3.t,E3,linewidth=2,label="GCE2(1)")
 
-Plots.plot(y,A1[end,:],linewidth=2,label="NL")
-Plots.plot!(y,A2[end,:],linewidth=2,label="GQL(1)")
-Plots.plot(y,A3[end,:],linewidth=2,label="GCE2(1)",legend=:right)
+Plots.plot(yy,A1[end,:],linewidth=2,label="NL")
+Plots.plot!(yy,A2[end,:],linewidth=2,label="GQL(1)")
+Plots.plot!(yy,A3[end,:],linewidth=2,label="GCE2(1)",legend=:right)
 
-Plots.plot(sol1.t,P1,linewidth=2)
-Plots.plot(sol2.t,P2,linewidth=2)
-Plots.plot(sol3.t,P3,linewidth=2)
+Plots.plot(sol1.t,P1,yscale=:log,legend=:outertopright,linewidth=2)
+Plots.plot(sol2.t,P2,yscale=:log,legend=:outertopright,linewidth=2)
+Plots.plot(sol3.t,P3,yscale=:log,legend=:outertopright,linewidth=2)
 
 # mean vorticity with time
 Plots.plot(sol1.t,y,A1',st=:contourf,color=:bwr,xaxis="t",yaxis="y")
@@ -1215,16 +1214,16 @@ Plots.plot(sol3.t,y,A3',st=:contourf,color=:bwr,xaxis="t",yaxis="y")
 
 # vorticity
 uxy,umn = inversefourier(sol1,nx,ny)
-Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-Plots.plot(x,y,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
 uxy,umn = inversefourier(sol2,nx,ny)
-Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-Plots.plot(x,y,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
 uxy,umn = inversefourier(sol3,nx,ny,Λ)
-Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-Plots.plot(x,y,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
 # type stability checks
 # opt_eqs()

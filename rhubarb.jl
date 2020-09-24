@@ -881,7 +881,8 @@ end
 
 function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64,Ω::Float64,θ::Float64,νn::Float64)
 
-    u0 = rand(ComplexF64,2*ny-1,nx)
+    # u0 = rand(ComplexF64,2*ny-1,nx)
+    u0 = ic_rand(lx,ly,nx,ny)
     tspan = (0.0,T)
 
     A = acoeffs(ly,ny)
@@ -898,11 +899,10 @@ end
 
 function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64,Ω::Float64,θ::Float64,νn::Float64,Δθ::Float64,τ::Float64)
 
-    # u0 = rand(ComplexF64,2*ny-1,nx)
     tspan = (0.0,T)
 
     A = acoeffs(ly,ny,Ω,Δθ,τ)
-    u0 = ic_eqm(lx,ly,nx,ny,A) + rand(ComplexF64,2*ny-1,nx)/1000.0
+    u0 = ic_eqm(lx,ly,nx,ny,A) + ic_rand(lx,ly,nx,ny)
 
     B = bcoeffs(lx,ly,nx,ny,Ω,θ,νn,τ)
     Cp,Cm = ccoeffs(lx,ly,nx,ny)
@@ -1043,6 +1043,18 @@ function exec_gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ω::Float64,�
     # integrator = init(prob,Tsit5())
 
     return sol
+end
+
+function ic_rand(lx::Float64,ly::Float64,nx::Int,ny::Int)
+
+    umn = zeros(ComplexF64,2*ny-1,2*nx-1)
+
+    uxy = randn(Float64,2*ny-1,2*nx-1)
+    umn = fftshift(fft(uxy))
+    umn[ny,nx] = 0.0 + im*0.0
+
+    return umn[:,nx:2*nx-1]
+
 end
 
 function ic_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,A::Array{ComplexF64,1})
@@ -1249,11 +1261,34 @@ function meanvorticity(sol,lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
 
 end
 
-function inversefourier(sol,nx::Int,ny::Int)
+function inversefourier(nx::Int,ny::Int,uff::Array{ComplexF64,2})
 
-    umn = zeros(ComplexF64,2*ny-1,2*nx-1,length(sol.u))
-    uff = zeros(ComplexF64,2*ny-1,2*nx-1,length(sol.u))
-    uxy = zeros(Float64,2*ny-1,2*nx-1,length(sol.u))
+    umn = zeros(ComplexF64,2*ny-1,2*nx-1)
+    uxy = zeros(Float64,2*ny-1,2*nx-1)
+
+    for m1 = 0:1:nx-1
+        n1min = m1 == 0 ? 1 : -ny + 1
+        for n1 = n1min:1:ny-1
+
+            umn[n1 + ny,m1+nx] = uff[n1+ny,m1+1]
+            umn[-n1 + ny,-m1+nx] = conj(uff[n1+ny,m1+1])
+
+        end
+    end
+
+    umn[ny,nx] = 0.0 + im*0.0
+
+    uxy = real(ifft(ifftshift(umn)))
+
+    return uxy
+
+end
+
+function inversefourier(nx::Int,ny::Int,ufft::Array{Array{ComplexF64,2},1})
+
+    umn = zeros(ComplexF64,2*ny-1,2*nx-1,length(ufft))
+    uff = zeros(ComplexF64,2*ny-1,2*nx-1,length(ufft))
+    uxy = zeros(Float64,2*ny-1,2*nx-1,length(ufft))
 
     for i in eachindex(sol.u)
 
@@ -1261,8 +1296,8 @@ function inversefourier(sol,nx::Int,ny::Int)
             n1min = m1 == 0 ? 1 : -ny + 1
             for n1 = n1min:1:ny-1
 
-                umn[n1 + ny,m1+nx,i] = sol.u[i][n1+ny,m1+1]
-                umn[-n1 + ny,-m1+nx,i] = conj(sol.u[i][n1+ny,m1+1])
+                umn[n1 + ny,m1+nx,i] = ufft[i][n1+ny,m1+1]
+                umn[-n1 + ny,-m1+nx,i] = conj(ufft[i][n1+ny,m1+1])
 
             end
         end
@@ -1279,7 +1314,7 @@ function inversefourier(sol,nx::Int,ny::Int)
 
     end
 
-    return uxy,umn
+    return uxy
 
 end
 
@@ -1360,7 +1395,7 @@ lx = 4.0*Float64(pi)
 ly = 4.0*Float64(pi)
 nx = 6
 ny = 6
-T = 200.0
+T = 1000.0
 νn = 0.0
 Ω = 2.0*Float64(pi)
 θ = 0.0
@@ -1369,18 +1404,14 @@ T = 200.0
 
 sol = exec(lx,ly,nx,ny,T,Ω,θ,νn,Δθ,τ)
 E,Z = energy(lx,ly,nx,ny,sol)
-Plots.plot(sol.t,E,linewidth=2,legend=:bottom,label="NL")
-Plots.plot!(sol.t,Z,linewidth=2,legend=:bottom,label="NL")
+Plots.plot(sol.t,E,linewidth=2,legend=:bottom,label="E")
+Plots.plot!(sol.t,Z,linewidth=2,legend=:bottom,label="Z")
 
-xx = LinRange(0,lx,2*nx-1)
-yy = LinRange(0,ly,2*ny-1)
-uxy,umn = inversefourier(sol,nx,ny)
+uxy = inversefourier(nx,ny,sol.u)
 Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
-
 Λ = 1
-# Ω = 2.0*Float64(pi)
 
 uin = randn(ComplexF64,2*ny-1,nx)
 u0 = ic_eqm(lx,ly,nx,ny,Ω,ν,τ) .+ uin/100.0

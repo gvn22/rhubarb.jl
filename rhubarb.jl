@@ -2,55 +2,158 @@ using OrdinaryDiffEq,RecursiveArrayTools,FFTW,ODEInterfaceDiffEq,LinearAlgebra,D
 using TimerOutputs,BenchmarkTools
 using Plots; plotly()
 
-function c_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Ξ::Float64,Δθ::Float64)
+function acoeffs(ly::Float64,ny::Int)
 
-    ζ0 = zeros(Float64,2*ny-1)
-    for n in 1:1:2*ny-1
-        ζ0[n] = -Ξ*tanh((ly/2.0 - 0.5*(2*n-1)/(2*ny-1)*ly)/Δθ)
-    end
-    ζ0f = fftshift(fft(ζ0))
-
-    ζff = zeros(ComplexF64,2*ny-1,nx)
-    for n in 1:1:2*ny-1
-        ζff[n,1] = ζ0f[n]
-    end
-    return ζff
+    A = zeros(ComplexF64,2*ny-1)
+    return A
 
 end
 
-function l_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,β::Float64,ν::Float64)
+function acoeffs(ly::Float64,ny::Int,Ω::Float64,Δθ::Float64,τ::Float64)
 
-    ω = zeros(Float64,2*ny-1,nx)
-    v = zeros(Float64,2*ny-1,nx)
-    v4 = zeros(Float64,2*ny-1,nx)
+    A = zeros(ComplexF64,2*ny-1)
+    ζjet = zeros(Float64,2*ny-1)
 
-    M::Int = nx - 1
-    N::Int = ny - 1
+    # jet vorticity is fraction of planetary vorticity
+    Ξ::Float64 = 0.6*Ω
+    κ::Float64 = τ == 0.0 ? 0.0 : 1.0/τ
 
-    kxmax::Float64 = 2.0*Float64(pi)/lx*Float64(M)
-    kymax::Float64 = 2.0*Float64(pi)/ly*Float64(N)
+    for y in 1:1:2*ny-1
+        ζjet[y] = -κ*Ξ*tanh((ly/2.0 - 0.5*(2*y-1)/(2*ny-1)*ly)/Δθ)
+    end
+    ζjet_fourier = fftshift(fft(ζjet))
 
+    for y in 1:1:2*ny-1
+        A[y,1] = ζjet_fourier[y]
+    end
+
+    return A
+
+end
+
+function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
+
+    B = zeros(ComplexF64,2*ny-1,nx)
+    return B
+
+end
+
+function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,νn::Float64)
+
+    B = zeros(ComplexF64,2*ny-1,nx)
+
+    twopi::Float64 = 2.0*Float64(pi)
+
+    # hyperviscosity normalized to result in unity dissipation rate at kmax
     α::Int = 2
+    kxmax::Float64 = 2.0*Float64(pi)/lx*Float64(nx-1)
+    kymax::Float64 = 2.0*Float64(pi)/ly*Float64(ny-1)
 
-    for m = 0:1:M
-        nmin = m == 0 ? 1 : -N
-        for n=nmin:1:N
+    for m = 0:1:nx-1
+        nmin = m == 0 ? 1 : -(ny-1)
+        for n=nmin:1:ny-1
 
-            kx::Float64 = 2.0*Float64(pi)/lx*Float64(m)
-            ky::Float64 = 2.0*Float64(pi)/ly*Float64(n)
+            kx::Float64 = twopi*Float64(m)/lx
+            ky::Float64 = twopi*Float64(n)/ly
 
-            ω[n+ny,m+1] = β*kx/(kx^2 + ky^2)
-            v[n+ny,m+1] = -ν*(kx^2 + ky^2)
-            v4[n+ny,m+1] = -ν*((kx^2 + ky^2)/(kxmax^2 + kymax^2))^(2*α)
+            B[n+ny,m+1] = - νn*((kx^2 + ky^2)/(kxmax^2 + kymax^2))^(2*α)
 
         end
     end
 
-    return ω,v,v4
+    return B
 
 end
 
-function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
+function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,θ::Float64)
+
+    B = zeros(ComplexF64,2*ny-1,nx)
+
+    twopi::Float64 = 2.0*Float64(pi)
+
+    β::Float64 = 2.0*Ω*cos(θ)
+
+    # hyperviscosity normalized to result in unity dissipation rate at kmax
+    α::Int = 2
+    kxmax::Float64 = 2.0*Float64(pi)/lx*Float64(nx-1)
+    kymax::Float64 = 2.0*Float64(pi)/ly*Float64(ny-1)
+
+    for m = 0:1:nx-1
+        nmin = m == 0 ? 1 : -(ny-1)
+        for n=nmin:1:ny-1
+
+            kx::Float64 = twopi*Float64(m)/lx
+            ky::Float64 = twopi*Float64(n)/ly
+
+            B[n+ny,m+1] = im*β*kx/(kx^2 + ky^2)
+
+        end
+    end
+
+    return B
+
+end
+
+function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,θ::Float64,νn::Float64)
+
+    B = zeros(ComplexF64,2*ny-1,nx)
+
+    twopi::Float64 = 2.0*Float64(pi)
+
+    β::Float64 = 2.0*Ω*cos(θ)
+
+    # hyperviscosity normalized to result in unity dissipation rate at kmax
+    α::Int = 2
+    kxmax::Float64 = 2.0*Float64(pi)/lx*Float64(nx-1)
+    kymax::Float64 = 2.0*Float64(pi)/ly*Float64(ny-1)
+
+    for m = 0:1:nx-1
+        nmin = m == 0 ? 1 : -(ny-1)
+        for n=nmin:1:ny-1
+
+            kx::Float64 = twopi*Float64(m)/lx
+            ky::Float64 = twopi*Float64(n)/ly
+
+            B[n+ny,m+1] = im*β*kx/(kx^2 + ky^2) - νn*((kx^2 + ky^2)/(kxmax^2 + kymax^2))^(2*α)
+
+        end
+    end
+
+    return B
+
+end
+
+function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,θ::Float64,νn::Float64,τ::Float64)
+
+    B = zeros(ComplexF64,2*ny-1,nx)
+
+    twopi::Float64 = 2.0*Float64(pi)
+
+    κ::Float64 = τ == 0.0 ? 0.0 : 1.0/τ
+    β::Float64 = 2.0*Ω*cos(θ)
+
+    # hyperviscosity normalized to result in unity dissipation rate at kmax
+    α::Int = 2
+    kxmax::Float64 = 2.0*Float64(pi)/lx*Float64(nx-1)
+    kymax::Float64 = 2.0*Float64(pi)/ly*Float64(ny-1)
+
+    for m = 0:1:nx-1
+        nmin = m == 0 ? 1 : -(ny-1)
+        for n=nmin:1:ny-1
+
+            kx::Float64 = twopi*Float64(m)/lx
+            ky::Float64 = twopi*Float64(n)/ly
+
+            B[n+ny,m+1] = - κ + im*β*kx/(kx^2 + ky^2) - νn*((kx^2 + ky^2)/(kxmax^2 + kymax^2))^(2*α)
+
+        end
+    end
+
+    return B
+
+end
+
+function ccoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
     M::Int = nx - 1
     N::Int = ny - 1
@@ -118,68 +221,7 @@ function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
 end
 
-function nl_eqs!(du,u,p,t)
-
-    nx::Int,ny::Int,ujet::Array{ComplexF64,2},τ::Float64,ω::Array{Float64,2},v::Array{Float64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
-    M::Int = nx - 1
-    N::Int = ny - 1
-
-    dζ = fill!(similar(du),0)
-
-    for m = 0:1:M
-        nmin = m == 0 ? 1 : -N
-        for n=nmin:1:N
-
-            dζ[n+ny,m+1] += (ujet[n+ny,m+1]-u[n+ny,m+1])/τ
-            dζ[n+ny,m+1] += im*ω[n+ny,m+1]*u[n+ny,m+1]
-            dζ[n+ny,m+1] += v[n+ny,m+1]*u[n+ny,m+1]
-
-        end
-    end
-
-    # ++ interactions
-    for m1=1:1:M
-        for n1=-N:1:N
-            for m2=0:1:min(m1,M-m1)
-
-                n2min = m2 == 0 ? 1 : -N
-                for n2=max(n2min,-N-n1):1:min(N,N-n1)
-
-                    m::Int = m1 + m2
-                    n::Int = n1 + n2
-
-                    dζ[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
-                    # could eliminate addition on array indices
-
-                end
-            end
-        end
-    end
-
-    # +- interactions
-    for m1=1:1:M
-        for n1=-N:1:N
-            for m2=0:1:m1
-
-                n2min = m2 == 0 ? 1 : -N
-                n2max = m2 == m1 ? n1 - 1 : N
-                for n2=max(n2min,n1-N):1:min(n2max,n1+N)
-
-                    m::Int = m1 - m2
-                    n::Int = n1 - n2
-
-                    dζ[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
-
-                end
-            end
-        end
-    end
-
-    du .= dζ
-
-end
-
-function gql_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
+function ccoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
 
     M::Int = nx - 1
     N::Int = ny - 1
@@ -326,23 +368,93 @@ function gql_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
 
 end
 
-function gql_eqs!(du,u,p,t)
+function nl_eqs!(du,u,p,t)
 
-    nx::Int,ny::Int,Λ::Int,ujet::Array{ComplexF64,2},τ::Float64,ω::Array{Float64,2},v::Array{Float64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
+    nx::Int,ny::Int,A::Array{ComplexF64,1},B::Array{ComplexF64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
 
     M::Int = nx - 1
     N::Int = ny - 1
 
     dζ = fill!(similar(du),0)
 
+    for n=1:1:N
+
+        dζ[n+ny,1] += A[n+ny]
+
+    end
+
+    for m = 0:1:M
+        nmin = m == 0 ? 1 : -N
+        for n=nmin:1:N
+
+            dζ[n+ny,m+1] += B[n+ny,m+1]*u[n+ny,m+1]
+
+        end
+    end
+
+    # ++ interactions
+    for m1=1:1:M
+        for n1=-N:1:N
+            for m2=0:1:min(m1,M-m1)
+
+                n2min = m2 == 0 ? 1 : -N
+                for n2=max(n2min,-N-n1):1:min(N,N-n1)
+
+                    m::Int = m1 + m2
+                    n::Int = n1 + n2
+
+                    dζ[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
+
+                end
+            end
+        end
+    end
+
+    # +- interactions
+    for m1=1:1:M
+        for n1=-N:1:N
+            for m2=0:1:m1
+
+                n2min = m2 == 0 ? 1 : -N
+                n2max = m2 == m1 ? n1 - 1 : N
+                for n2=max(n2min,n1-N):1:min(n2max,n1+N)
+
+                    m::Int = m1 - m2
+                    n::Int = n1 - n2
+
+                    dζ[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
+
+                end
+            end
+        end
+    end
+
+    du .= dζ
+
+end
+
+function gql_eqs!(du,u,p,t)
+
+    nx::Int,ny::Int,Λ::Int,A::Array{ComplexF64,1},B::Array{ComplexF64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
+
+    M::Int = nx - 1
+    N::Int = ny - 1
+
+    dζ = fill!(similar(du),0)
+
+    # constant terms
+    for n=1:1:N
+
+        dζ[n+ny,1] += A[n+ny]
+
+    end
+
     # linear terms
     for m = 0:1:M
         nmin = m == 0 ? 1 : -N
         for n=nmin:1:N
 
-            dζ[n+ny,m+1] += (ujet[n+ny,m+1]-u[n+ny,m+1])/τ
-            dζ[n+ny,m+1] += im*ω[n+ny,m+1]*u[n+ny,m+1]
-            dζ[n+ny,m+1] += v[n+ny,m+1]*u[n+ny,m+1]
+            dζ[n+ny,m+1] += B[n+ny,m+1]*u[n+ny,m+1]
 
         end
     end
@@ -595,7 +707,7 @@ function gce2_eqs!(du,u,p,t)
                             accumulator_nl += temp_nl[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
                             accumulator_li += temp_li[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
 
-                        end§
+                        end
                     end
 
                     # from H-L
@@ -716,18 +828,91 @@ function opt_eqs()
 
 end
 
-function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,β::Float64,ν::Float64,u0::Array{ComplexF64,2})
+function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64)
 
-    # u0 = rand(ComplexF64,2*ny-1,nx)
-    # u0 = [1.0 2.0; 3.0 4.0; 5.0 6.0]
-    tspan = (0.0,200.0)
-    ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
-    Cp,Cm = nl_coeffs(lx,ly,nx,ny)
-    p = [nx,ny,ω,v4,Cp,Cm]
+    u0 = rand(ComplexF64,2*ny-1,nx)
+    tspan = (0.0,T)
+
+    A = acoeffs(ly,ny)
+    B = bcoeffs(lx,ly,nx,ny)
+    Cp,Cm = ccoeffs(lx,ly,nx,ny)
+    p = [nx,ny,A,B,Cp,Cm]
+
     prob = ODEProblem(nl_eqs!,u0,tspan,p)
     @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
 
     return sol
+
+end
+
+function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64,Ω::Float64,θ::Float64)
+
+    u0 = rand(ComplexF64,2*ny-1,nx)
+    tspan = (0.0,T)
+
+    A = acoeffs(ly,ny)
+    B = bcoeffs(lx,ly,nx,ny,Ω,θ)
+    Cp,Cm = ccoeffs(lx,ly,nx,ny)
+    p = [nx,ny,A,B,Cp,Cm]
+
+    prob = ODEProblem(nl_eqs!,u0,tspan,p)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+
+    return sol
+
+end
+
+function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64,νn::Float64)
+
+    u0 = rand(ComplexF64,2*ny-1,nx)
+    tspan = (0.0,T)
+
+    A = acoeffs(ly,ny)
+    B = bcoeffs(lx,ly,nx,ny,νn)
+    Cp,Cm = ccoeffs(lx,ly,nx,ny)
+    p = [nx,ny,A,B,Cp,Cm]
+
+    prob = ODEProblem(nl_eqs!,u0,tspan,p)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+
+    return sol
+
+end
+
+function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64,Ω::Float64,θ::Float64,νn::Float64)
+
+    u0 = rand(ComplexF64,2*ny-1,nx)
+    tspan = (0.0,T)
+
+    A = acoeffs(ly,ny)
+    B = bcoeffs(lx,ly,nx,ny,Ω,θ,νn)
+    Cp,Cm = ccoeffs(lx,ly,nx,ny)
+    p = [nx,ny,A,B,Cp,Cm]
+
+    prob = ODEProblem(nl_eqs!,u0,tspan,p)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+
+    return sol
+
+end
+
+function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64,Ω::Float64,θ::Float64,νn::Float64,Δθ::Float64,τ::Float64)
+
+    # u0 = rand(ComplexF64,2*ny-1,nx)
+    tspan = (0.0,T)
+
+    A = acoeffs(ly,ny,Ω,Δθ,τ)
+    u0 = ic_eqm(lx,ly,nx,ny,A) + rand(ComplexF64,2*ny-1,nx)/1000.0
+
+    B = bcoeffs(lx,ly,nx,ny,Ω,θ,νn,τ)
+    Cp,Cm = ccoeffs(lx,ly,nx,ny)
+    p = [nx,ny,A,B,Cp,Cm]
+
+    prob = ODEProblem(nl_eqs!,u0,tspan,p)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+
+    return sol
+
 end
 
 function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,β::Float64,ν::Float64,u0::Array{ComplexF64,2})
@@ -858,6 +1043,18 @@ function exec_gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ω::Float64,�
     # integrator = init(prob,Tsit5())
 
     return sol
+end
+
+function ic_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,A::Array{ComplexF64,1})
+
+    ζ0 = zeros(ComplexF64,2*ny-1,nx)
+
+    for y in 1:1:2*ny-1
+        ζ0[y,1] = A[y]
+    end
+
+    return ζ0
+
 end
 
 function ic_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,ν::Float64,τ::Float64)
@@ -1160,17 +1357,30 @@ end
 
 # global code
 lx = 4.0*Float64(pi)
-ly = 2.0*Float64(pi)
-nx = 12
-ny = 10
+ly = 4.0*Float64(pi)
+nx = 6
+ny = 6
+T = 200.0
+νn = 0.0
+Ω = 2.0*Float64(pi)
+θ = 0.0
+τ = 10.0
+Δθ = 0.05
+
+sol = exec(lx,ly,nx,ny,T,Ω,θ,νn,Δθ,τ)
+E,Z = energy(lx,ly,nx,ny,sol)
+Plots.plot(sol.t,E,linewidth=2,legend=:bottom,label="NL")
+Plots.plot!(sol.t,Z,linewidth=2,legend=:bottom,label="NL")
+
 xx = LinRange(0,lx,2*nx-1)
 yy = LinRange(0,ly,2*ny-1)
+uxy,umn = inversefourier(sol,nx,ny)
+Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+
 
 Λ = 1
 # Ω = 2.0*Float64(pi)
-Ω = 1.0
-ν = 1.0
-τ = 10.0
 
 uin = randn(ComplexF64,2*ny-1,nx)
 u0 = ic_eqm(lx,ly,nx,ny,Ω,ν,τ) .+ uin/100.0

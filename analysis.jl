@@ -25,32 +25,34 @@ function energy(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF6
 end
 
 # energy for GCE2
-function energy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,sol)
+function energy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{Float64},Tuple{Array{Complex{Float64},2},Array{Complex{Float64},4}}},1})
 
-    E = zeros(Float64,length(sol.u))
+    E = zeros(Float64,length(u))
     Z = fill!(similar(E),0)
 
-    for i in eachindex(sol.u)
+    for i in eachindex(u)
 
         for m1 = 0:1:Λ
-            n1min = m1 == 0 ? 1 : -ny + 1
+            n1min = m1 == 0 ? 1 : -(ny-1)
             for n1 = n1min:1:ny-1
 
-                cx,cy = (2.0*pi/lx)*m1,(2.0*pi/ly)*n1
+                kx = 2.0*Float64(pi)/lx*m1
+                ky = 2.0*Float64(pi)/ly*n1
 
-                E[i] += abs(sol.u[i].x[1][n1 + ny,m1 + 1])^2/(cx^2 + cy^2)
-                Z[i] += abs(sol.u[i].x[1][n1 + ny,m1 + 1])^2
+                E[i] += abs(u[i].x[1][n1 + ny,m1 + 1])^2/(kx^2 + ky^2)
+                Z[i] += abs(u[i].x[1][n1 + ny,m1 + 1])^2
 
             end
         end
 
         for m1 = Λ+1:1:nx-1
-            for n1 = -ny+1:1:ny-1
+            for n1 = -(ny-1):1:ny-1
 
-                cx,cy = (2.0*pi/lx)*m1,(2.0*pi/ly)*n1
+                kx = 2.0*Float64(pi)/lx*m1
+                ky = 2.0*Float64(pi)/ly*n1
 
-                E[i] += abs(sol.u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ])/(cx^2 + cy^2)
-                Z[i] += abs(sol.u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ])
+                E[i] += abs(u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ])/(kx^2 + ky^2)
+                Z[i] += abs(u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ])
 
             end
         end

@@ -1,9 +1,8 @@
 using OrdinaryDiffEq
-using RecursiveArrayTools
-using FFTW
+using RecursiveArrayTools,DiffEqCallbacks
+using FFTW, LinearAlgebra
 using ODEInterfaceDiffEq
 using Plots
-using DifferentialEquations, LinearAlgebra
 using TimerOutputs
 
 include("coefficients.jl")
@@ -204,7 +203,100 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64)
     p = [nx,ny,Λ,A,B,Cp,Cm]
 
     prob = ODEProblem(gce2_eqs!,u0,tspan,p)
-    poschecktimes = LinRange(1.0,tspan[2],50)
+    poschecktimes = range(1.0,T,step=10.0)
+    condition(u,t,integrator) = t ∈ poschecktimes && !ispositive(u.x[2],nx,ny,Λ)
+    affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
+    cb = PresetTimeCallback(poschecktimes,affect!)
+
+    @time sol = solve(prob,RK4(),callback=cb,adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+
+    return sol
+
+end
+
+function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Float64,θ::Float64)
+
+    # u0 = rand(ComplexF64,2*ny-1,nx)
+    tspan = (0.0,T)
+    u0 = ic_cumulants(nx,ny,Λ,ic_rand(lx,ly,nx,ny))
+
+    A = acoeffs(ly,ny)
+    B = bcoeffs(lx,ly,nx,ny,Ω,θ)
+    Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
+    p = [nx,ny,Λ,A,B,Cp,Cm]
+
+    prob = ODEProblem(gce2_eqs!,u0,tspan,p)
+    poschecktimes = range(1.0,T,step=10.0)
+    condition(u,t,integrator) = t ∈ poschecktimes && !ispositive(u.x[2],nx,ny,Λ)
+    affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
+    cb = PresetTimeCallback(poschecktimes,affect!)
+
+    @time sol = solve(prob,RK4(),callback=cb,adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+
+    return sol
+
+end
+
+function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,νn::Float64)
+
+    # u0 = rand(ComplexF64,2*ny-1,nx)
+    tspan = (0.0,T)
+    u0 = ic_cumulants(nx,ny,Λ,ic_rand(lx,ly,nx,ny))
+
+    A = acoeffs(ly,ny)
+    B = bcoeffs(lx,ly,nx,ny,νn)
+    Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
+    p = [nx,ny,Λ,A,B,Cp,Cm]
+
+    prob = ODEProblem(gce2_eqs!,u0,tspan,p)
+    poschecktimes = range(1.0,T,step=10.0)
+    condition(u,t,integrator) = t ∈ poschecktimes && !ispositive(u.x[2],nx,ny,Λ)
+    affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
+    cb = PresetTimeCallback(poschecktimes,affect!)
+
+    @time sol = solve(prob,RK4(),callback=cb,adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+
+    return sol
+
+end
+
+function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Float64,θ::Float64,νn::Float64)
+
+    # u0 = rand(ComplexF64,2*ny-1,nx)
+    tspan = (0.0,T)
+    u0 = ic_cumulants(nx,ny,Λ,ic_rand(lx,ly,nx,ny))
+
+    A = acoeffs(ly,ny)
+    B = bcoeffs(lx,ly,nx,ny,Ω,θ,νn)
+    Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
+    p = [nx,ny,Λ,A,B,Cp,Cm]
+
+    prob = ODEProblem(gce2_eqs!,u0,tspan,p)
+    poschecktimes = range(1.0,T,step=10.0)
+    condition(u,t,integrator) = t ∈ poschecktimes && !ispositive(u.x[2],nx,ny,Λ)
+    affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
+    cb = PresetTimeCallback(poschecktimes,affect!)
+
+    @time sol = solve(prob,RK4(),callback=cb,adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+
+    return sol
+
+end
+
+function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Float64,θ::Float64,νn::Float64,Δθ::Float64,τ::Float64)
+
+    # u0 = rand(ComplexF64,2*ny-1,nx)
+    tspan = (0.0,T)
+
+    A = acoeffs(ly,ny,Ω,Δθ,τ)
+    u0 = ic_cumulants(nx,ny,Λ,ic_eqm(lx,ly,nx,ny,A) + ic_rand(lx,ly,nx,ny))
+
+    B = bcoeffs(lx,ly,nx,ny,Ω,θ,νn,τ)
+    Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
+    p = [nx,ny,Λ,A,B,Cp,Cm]
+
+    prob = ODEProblem(gce2_eqs!,u0,tspan,p)
+    poschecktimes = range(1.0,T,step=10.0)
     condition(u,t,integrator) = t ∈ poschecktimes && !ispositive(u.x[2],nx,ny,Λ)
     affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
     cb = PresetTimeCallback(poschecktimes,affect!)
@@ -355,7 +447,7 @@ T = 100.0
 θ = 0.0
 νn = 0.0
 Δθ = 0.05
-τ = 10.0
+τ = 2.0
 
 plotly()
 
@@ -372,7 +464,8 @@ Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
 Λ = 1
-sol = gql(lx,ly,nx,ny,Λ,T,Ω,θ,νn,Δθ,τ)
+
+sol = gql(lx,ly,nx,ny,Λ,T,Ω,θ,νn)
 E,Z = energy(lx,ly,nx,ny,sol.u)
 Plots.plot(sol.t,E,linewidth=2,legend=:bottom,label="E")
 Plots.plot!(sol.t,Z,linewidth=2,legend=:bottom,label="Z")
@@ -381,18 +474,15 @@ uxy = inversefourier(nx,ny,sol.u)
 Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
-sol = gce2(lx,ly,nx,ny,Λ,T)
-E,Z = energy(lx,ly,nx,ny,Λ,sol)
+sol = gce2(lx,ly,nx,ny,Λ,T,Ω,θ,νn,Δθ,τ)
+E,Z = energy(lx,ly,nx,ny,Λ,sol.u)
+# P,O = zonalpower(lx,ly,nx,ny,sol.u)
 Plots.plot(sol.t,E,linewidth=2,legend=:bottom,label="E")
 Plots.plot!(sol.t,Z,linewidth=2,legend=:bottom,label="Z")
 
 uxy = inversefourier(nx,ny,Λ,sol.u)
 Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-
-uin = randn(ComplexF64,2*ny-1,nx)
-u0 = ic_eqm(lx,ly,nx,ny,Ω,ν,τ) .+ uin/100.0
-# u0 = uin
 
 # NL solution
 sol1 = exec(lx,ly,nx,ny,Ω,ν,τ,u0)
@@ -429,16 +519,3 @@ Plots.plot(sol3.t,P3,yscale=:log,legend=:outertopright,linewidth=2)
 Plots.plot(sol1.t,y,A1',st=:contourf,color=:bwr,xaxis="t",yaxis="y")
 Plots.plot(sol2.t,y,A2',st=:contourf,color=:bwr,xaxis="t",yaxis="y")
 Plots.plot(sol3.t,y,A3',st=:contourf,color=:bwr,xaxis="t",yaxis="y")
-
-# vorticity
-uxy,umn = inversefourier(sol1,nx,ny)
-Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-
-uxy,umn = inversefourier(sol2,nx,ny)
-Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-
-uxy,umn = inversefourier(sol3,nx,ny,Λ)
-Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")

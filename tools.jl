@@ -21,7 +21,7 @@ end
 
 function positivity!(cumulant::Array{ComplexF64,4},nx::Int,ny::Int,Λ::Int)
 
-    println("Two-point correlation is not positive definite...")
+    println("Removing negative eignvalues from two-point correlation...")
     twopoint = zeros(ComplexF64,(2*ny-1)*nx,(2*ny-1)*nx)
 
     for m=Λ+1:1:nx-1

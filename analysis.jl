@@ -76,8 +76,8 @@ function zonalpower(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{Compl
                 kx = 2.0*Float64(pi)/lx*m1
                 ky = 2.0*Float64(pi)/ly*n1
 
-                P[i,m1+1] += abs(sol.u[i][n1 + ny,m1 + 1])^2/(kx^2 + ky^2)
-                O[i,m1+1] += abs(sol.u[i][n1 + ny,m1 + 1])^2
+                P[i,m1+1] += abs(u[i][n1 + ny,m1 + 1])^2/(kx^2 + ky^2)
+                O[i,m1+1] += abs(u[i][n1 + ny,m1 + 1])^2
 
             end
         end
@@ -127,17 +127,17 @@ function zonalpower(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{Arr
 end
 
 # mean vorticity NL/GQL
-function meanvorticity(sol,lx::Float64,ly::Float64,nx::Int,ny::Int)
+function meanvorticity(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF64,2},1})
 
-    ζf = zeros(ComplexF64,length(sol.u),2*ny-1)
-    ζy = zeros(Float64,length(sol.u),2*ny-1)
+    ζf = zeros(ComplexF64,length(u),2*ny-1)
+    ζy = zeros(Float64,length(u),2*ny-1)
 
-    for i in eachindex(sol.u)
+    for i in eachindex(u)
 
         for n1 = 1:1:ny-1
 
-            ζf[i,n1+ny] = sol.u[i][n1+ny,1]
-            ζf[i,-n1+ny] = conj(sol.u[i][-n1+ny,1])
+            ζf[i,n1+ny] = u[i][n1+ny,1]
+            ζf[i,-n1+ny] = conj(u[i][n1+ny,1])
 
         end
 
@@ -151,17 +151,17 @@ function meanvorticity(sol,lx::Float64,ly::Float64,nx::Int,ny::Int)
 end
 
 # mean vorticity GCE2
-function meanvorticity(sol,lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
+function meanvorticity(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{Float64},Tuple{Array{Complex{Float64},2},Array{Complex{Float64},4}}},1})
 
-    ζf = zeros(ComplexF64,length(sol.u),2*ny-1)
-    ζy = zeros(Float64,length(sol.u),2*ny-1)
+    ζf = zeros(ComplexF64,length(u),2*ny-1)
+    ζy = zeros(Float64,length(u),2*ny-1)
 
-    for i in eachindex(sol.u)
+    for i in eachindex(u)
 
         for n1 = 1:1:ny-1
 
-            ζf[i,n1+ny] = sol.u[i].x[1][n1+ny,1]
-            ζf[i,-n1+ny] = conj(sol.u[i].x[1][-n1+ny,1])
+            ζf[i,n1+ny] = u[i].x[1][n1+ny,1]
+            ζf[i,-n1+ny] = conj(u[i].x[1][n1+ny,1])
 
         end
 

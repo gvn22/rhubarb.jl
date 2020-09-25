@@ -296,7 +296,8 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Flo
     p = [nx,ny,Λ,A,B,Cp,Cm]
 
     prob = ODEProblem(gce2_eqs!,u0,tspan,p)
-    poschecktimes = range(1.0,T,step=10.0)
+    # poschecktimes = range(1.0,T,step=10.0)
+    poschecktimes = LinRange(1.0,T,20)
     condition(u,t,integrator) = t ∈ poschecktimes && !ispositive(u.x[2],nx,ny,Λ)
     affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
     cb = PresetTimeCallback(poschecktimes,affect!)
@@ -305,20 +306,6 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Flo
 
     return sol
 
-end
-
-function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,β::Float64,ν::Float64,u0::Array{ComplexF64,2})
-
-    # u0 = rand(ComplexF64,2*ny-1,nx)
-    # u0 = [1.0 2.0; 3.0 4.0; 5.0 6.0]
-    tspan = (0.0,1000.0)
-    ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
-    Cp,Cm = gql_coeffs(lx,ly,nx,ny,Λ)
-    p = [nx,ny,Λ,ω,v4,Cp,Cm]
-    prob = ODEProblem(gql_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
-
-    return sol
 end
 
 function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,β::Float64,ν::Float64,t_end::Float64,u0::Array{ComplexF64,2})
@@ -439,87 +426,73 @@ end
 
 # global code
 lx = 4.0*Float64(pi)
-ly = 4.0*Float64(pi)
+ly = 2.0*Float64(pi)
 nx = 4
 ny = 4
 T = 100.0
 Ω = 2.0*Float64(pi)
-θ = 0.0
-νn = 0.0
+θ = Float64(pi)/6.0
+νn = 1.0
 Δθ = 0.05
 τ = 2.0
 
 plotly()
 
-sol = exec(lx,ly,nx,ny,T,Ω,θ,νn)
-E,Z = energy(lx,ly,nx,ny,sol.u)
-Plots.plot(sol.t,E,linewidth=2,legend=:bottom,label="E")
-Plots.plot!(sol.t,Z,linewidth=2,legend=:bottom,label="Z")
+xx = LinRange(-lx/2,lx/2,2*nx-1)
+yy = LinRange(-ly/2,ly/2,2*ny-1)
+angles = yy*180.0/ly
+modes = ["0" "1" "2" "3"]
 
-xx = LinRange(0,lx,2*nx-1)
-yy = LinRange(0,ly,2*ny-1)
+sol1 = exec(lx,ly,nx,ny,T,Ω,θ,νn,Δθ,τ)
 
-uxy = inversefourier(nx,ny,sol.u)
+E,Z = energy(lx,ly,nx,ny,sol1.u)
+Plots.plot(sol1.t,E,linewidth=2,legend=:bottom,xaxis="t",label="E")
+Plots.plot!(sol1.t,Z,linewidth=2,legend=:bottom,xaxis="t",label="Z")
+
+uxy = inversefourier(nx,ny,sol1.u)
 Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+
+P,O = zonalpower(lx,ly,nx,ny,sol1.u)
+Plots.plot(sol1.t,P,yscale=:log,labels=modes,legend=:outertopright,linewidth=2)
+Plots.plot(sol1.t,O,yscale=:log,labels=modes,legend=:outertopright,linewidth=2)
+
+A = meanvorticity(lx,ly,nx,ny,sol1.u)
+Plots.plot(angles,A[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
+Plots.plot(sol1.t,angles,A',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 
 Λ = 1
 
-sol = gql(lx,ly,nx,ny,Λ,T,Ω,θ,νn)
-E,Z = energy(lx,ly,nx,ny,sol.u)
-Plots.plot(sol.t,E,linewidth=2,legend=:bottom,label="E")
-Plots.plot!(sol.t,Z,linewidth=2,legend=:bottom,label="Z")
+sol2 = gql(lx,ly,nx,ny,Λ,T,Ω,θ,νn,Δθ,τ)
+E,Z = energy(lx,ly,nx,ny,sol2.u)
+Plots.plot(sol2.t,E,linewidth=2,legend=:bottom,label="E")
+Plots.plot!(sol2.t,Z,linewidth=2,legend=:bottom,label="Z")
 
-uxy = inversefourier(nx,ny,sol.u)
+uxy = inversefourier(nx,ny,sol2.u)
 Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
-sol = gce2(lx,ly,nx,ny,Λ,T,Ω,θ,νn,Δθ,τ)
-E,Z = energy(lx,ly,nx,ny,Λ,sol.u)
-Plots.plot(sol.t,E,linewidth=2,legend=:bottom,label="E")
-Plots.plot!(sol.t,Z,linewidth=2,legend=:bottom,label="Z")
+P,O = zonalpower(lx,ly,nx,ny,sol2.u)
+Plots.plot(sol2.t,P,yscale=:log,labels=modes,legend=:outertopright,linewidth=2)
+Plots.plot(sol2.t,O,yscale=:log,labels=modes,legend=:outertopright,linewidth=2)
 
-P,O = zonalpower(lx,ly,nx,ny,Λ,sol.u)
-modes = Vector(["$a" for a in 0:1:nx-1])
-Plots.plot(sol.t,P,yscale=:log,labels=modes,legend=:outertopright,linewidth=2)
-Plots.plot(sol.t,O,yscale=:log,labels=modes,legend=:outertopright,linewidth=2)
+A = meanvorticity(lx,ly,nx,ny,sol2.u)
+Plots.plot(angles,A[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
+Plots.plot(sol2.t,angles,A',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 
-uxy = inversefourier(nx,ny,Λ,sol.u)
+sol3 = gce2(lx,ly,nx,ny,Λ,T,Ω,θ,νn,Δθ,τ)
+E,Z = energy(lx,ly,nx,ny,Λ,sol3.u)
+Plots.plot(sol3.t,E,linewidth=2,legend=:bottom,label="E")
+Plots.plot!(sol3.t,Z,linewidth=2,legend=:bottom,label="Z")
+
+P,O = zonalpower(lx,ly,nx,ny,Λ,sol3.u)
+Plots.plot(sol3.t,P,yscale=:log,labels=modes,legend=:outertopright,linewidth=2)
+Plots.plot(sol3.t,O,yscale=:log,labels=modes,legend=:outertopright,linewidth=2)
+
+A = meanvorticity(lx,ly,nx,ny,Λ,sol3.u)
+Plots.plot(angles,A[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GCE2")
+Plots.plot(sol3.t,angles,A',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
+
+uxy = inversefourier(nx,ny,Λ,sol3.u)
 Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-
-# NL solution
-sol1 = exec(lx,ly,nx,ny,Ω,ν,τ,u0)
-E1,Z1 = energy(lx,ly,nx,ny,sol1)
-P1,O1 = zonalpower(sol1,lx,ly,nx,ny)
-A1 = meanvorticity(sol1,lx,ly,nx,ny)
-
-# GQL solution
-sol2 = exec(lx,ly,nx,ny,Λ,Ω,ν,τ,u0)
-E2,Z2 = energy(lx,ly,nx,ny,sol2)
-P2,O2 = zonalpower(sol2,lx,ly,nx,ny)
-A2 = meanvorticity(sol2,lx,ly,nx,ny)
-
-# GCE2 solution
-sol3 = exec_gce2(lx,ly,nx,ny,Λ,Ω,ν,τ,u0)
-E3,Z3 = energy(lx,ly,nx,ny,Λ,sol3)
-P3,O3 = zonalpower(sol3,lx,ly,nx,ny,Λ)
-A3 = meanvorticity(sol3,lx,ly,nx,ny,Λ)
-
-# compare curves
-Plots.plot(sol1.t,E1,linewidth=2,legend=:bottom,label="NL")
-Plots.plot!(sol2.t,E2,linewidth=2,label="GQL(1)")
-Plots.plot!(sol3.t,E3,linewidth=2,label="GCE2(1)")
-
-Plots.plot(yy,A1[end,:],linewidth=2,label="NL")
-Plots.plot!(yy,A2[end,:],linewidth=2,label="GQL(1)")
-Plots.plot!(yy,A3[end,:],linewidth=2,label="GCE2(1)",legend=:right)
-
-Plots.plot(sol1.t,P1,yscale=:log,legend=:outertopright,linewidth=2)
-Plots.plot(sol2.t,P2,yscale=:log,legend=:outertopright,linewidth=2)
-Plots.plot(sol3.t,P3,yscale=:log,legend=:outertopright,linewidth=2)
-
-# mean vorticity with time
-Plots.plot(sol1.t,y,A1',st=:contourf,color=:bwr,xaxis="t",yaxis="y")
-Plots.plot(sol2.t,y,A2',st=:contourf,color=:bwr,xaxis="t",yaxis="y")
-Plots.plot(sol3.t,y,A3',st=:contourf,color=:bwr,xaxis="t",yaxis="y")

@@ -85,7 +85,7 @@ function inversefourier(nx::Int,ny::Int,ufft::Array{Array{ComplexF64,2},1})
     uff = zeros(ComplexF64,2*ny-1,2*nx-1,length(ufft))
     uxy = zeros(Float64,2*ny-1,2*nx-1,length(ufft))
 
-    for i in eachindex(sol.u)
+    for i in eachindex(ufft)
 
         for m1 = 0:1:nx-1
             n1min = m1 == 0 ? 1 : -ny + 1
@@ -119,7 +119,7 @@ function inversefourier(nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{
     uff = zeros(ComplexF64,2*ny-1,2*nx-1,length(u))
     uxy = zeros(Float64,2*ny-1,2*nx-1,length(u))
 
-    for i in eachindex(sol.u)
+    for i in eachindex(u)
 
         for m1 = 0:1:Λ
             n1min = m1 == 0 ? 1 : -ny + 1

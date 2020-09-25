@@ -3,7 +3,7 @@ using RecursiveArrayTools
 using FFTW
 using ODEInterfaceDiffEq
 using Plots
-# ,DifferentialEquationsLinearAlgebra
+using DifferentialEquations, LinearAlgebra
 using TimerOutputs
 
 include("coefficients.jl")
@@ -192,6 +192,29 @@ function gql(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Floa
 
 end
 
+function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64)
+
+    # u0 = rand(ComplexF64,2*ny-1,nx)
+    tspan = (0.0,T)
+    u0 = ic_cumulants(nx,ny,Λ,ic_rand(lx,ly,nx,ny))
+
+    A = acoeffs(ly,ny)
+    B = bcoeffs(lx,ly,nx,ny)
+    Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
+    p = [nx,ny,Λ,A,B,Cp,Cm]
+
+    prob = ODEProblem(gce2_eqs!,u0,tspan,p)
+    poschecktimes = LinRange(1.0,tspan[2],50)
+    condition(u,t,integrator) = t ∈ poschecktimes && !ispositive(u.x[2],nx,ny,Λ)
+    affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
+    cb = PresetTimeCallback(poschecktimes,affect!)
+
+    @time sol = solve(prob,RK4(),callback=cb,adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+
+    return sol
+
+end
+
 function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,β::Float64,ν::Float64,u0::Array{ComplexF64,2})
 
     # u0 = rand(ComplexF64,2*ny-1,nx)
@@ -325,9 +348,9 @@ end
 # global code
 lx = 4.0*Float64(pi)
 ly = 4.0*Float64(pi)
-nx = 6
-ny = 6
-T = 1000.0
+nx = 4
+ny = 4
+T = 100.0
 Ω = 2.0*Float64(pi)
 θ = 0.0
 νn = 0.0
@@ -355,6 +378,15 @@ Plots.plot(sol.t,E,linewidth=2,legend=:bottom,label="E")
 Plots.plot!(sol.t,Z,linewidth=2,legend=:bottom,label="Z")
 
 uxy = inversefourier(nx,ny,sol.u)
+Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+
+sol = gce2(lx,ly,nx,ny,Λ,T)
+E,Z = energy(lx,ly,nx,ny,Λ,sol)
+Plots.plot(sol.t,E,linewidth=2,legend=:bottom,label="E")
+Plots.plot!(sol.t,Z,linewidth=2,legend=:bottom,label="Z")
+
+uxy = inversefourier(nx,ny,Λ,sol.u)
 Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 

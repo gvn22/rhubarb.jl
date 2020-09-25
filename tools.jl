@@ -113,11 +113,11 @@ function inversefourier(nx::Int,ny::Int,ufft::Array{Array{ComplexF64,2},1})
 
 end
 
-function inversefourier(sol,nx::Int,ny::Int,Λ::Int)
+function inversefourier(nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{Float64},Tuple{Array{Complex{Float64},2},Array{Complex{Float64},4}}},1})
 
-    umn = zeros(ComplexF64,2*ny-1,2*nx-1,length(sol.u))
-    uff = zeros(ComplexF64,2*ny-1,2*nx-1,length(sol.u))
-    uxy = zeros(Float64,2*ny-1,2*nx-1,length(sol.u))
+    umn = zeros(ComplexF64,2*ny-1,2*nx-1,length(u))
+    uff = zeros(ComplexF64,2*ny-1,2*nx-1,length(u))
+    uxy = zeros(Float64,2*ny-1,2*nx-1,length(u))
 
     for i in eachindex(sol.u)
 
@@ -125,8 +125,8 @@ function inversefourier(sol,nx::Int,ny::Int,Λ::Int)
             n1min = m1 == 0 ? 1 : -ny + 1
             for n1 = n1min:1:ny-1
 
-                umn[n1 + ny,m1+nx,i] = sol.u[i].x[1][n1+ny,m1+1]
-                umn[-n1 + ny,-m1+nx,i] = conj(sol.u[i].x[1][n1+ny,m1+1])
+                umn[n1 + ny,m1+nx,i] = u[i].x[1][n1+ny,m1+1]
+                umn[-n1 + ny,-m1+nx,i] = conj(u[i].x[1][n1+ny,m1+1])
 
             end
         end
@@ -143,7 +143,7 @@ function inversefourier(sol,nx::Int,ny::Int,Λ::Int)
 
     end
 
-    return uxy,umn
+    return uxy
 
 end
 

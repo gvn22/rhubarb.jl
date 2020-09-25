@@ -186,7 +186,7 @@ end
 
 function gce2_eqs!(du,u,p,t)
 
-    nx::Int,ny::Int,Λ::Int,ujet::Array{ComplexF64,2},τ::Float64,ω::Array{Float64,2},v::Array{Float64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
+    nx::Int,ny::Int,Λ::Int,A::Array{ComplexF64,1},B::Array{ComplexF64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
 
     M::Int = nx - 1
     N::Int = ny - 1
@@ -194,15 +194,20 @@ function gce2_eqs!(du,u,p,t)
     dζ = fill!(similar(u.x[1]),0)
     dΘ = fill!(similar(u.x[2]),0)
 
+    # constant terms
+    for n=1:1:N
+
+        dζ[n+ny,1] += A[n+ny]
+
+    end
+
     # low mode equations
     # linear terms: L
     for m = 0:1:Λ
         nmin = m == 0 ? 1 : -N
         for n=nmin:1:N
 
-            dζ[n+ny,m+1] += (ujet[n+ny,m+1]-u.x[1][n+ny,m+1])/τ
-            dζ[n+ny,m+1] += im*ω[n+ny,m+1]*u.x[1][n+ny,m+1]
-            dζ[n+ny,m+1] += v[n+ny,m+1]*u.x[1][n+ny,m+1]
+            dζ[n+ny,m+1] += B[n+ny,m+1]*u.x[1][n+ny,m+1]
 
         end
     end
@@ -275,9 +280,7 @@ function gce2_eqs!(du,u,p,t)
     for m = Λ+1:1:M
         for n=-N:1:N
 
-            temp_li[n+ny,m-Λ,n+ny,m-Λ] += -1.0/τ
-            temp_li[n+ny,m-Λ,n+ny,m-Λ] += im*ω[n+ny,m+1]
-            temp_li[n+ny,m-Λ,n+ny,m-Λ] += v[n+ny,m+1]
+            temp_li[n+ny,m-Λ,n+ny,m-Λ] += B[n+ny,m+1]
 
         end
     end
@@ -371,8 +374,5 @@ function gce2_eqs!(du,u,p,t)
             end
         end
     end
-    # du.x[2] .= dΘ
-    # regular intervals! use callback
-    # positivity!(u.x[2],lx,ly,nx,ny,Λ)
 
 end

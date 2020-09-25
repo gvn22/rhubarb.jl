@@ -476,9 +476,13 @@ Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
 sol = gce2(lx,ly,nx,ny,Λ,T,Ω,θ,νn,Δθ,τ)
 E,Z = energy(lx,ly,nx,ny,Λ,sol.u)
-# P,O = zonalpower(lx,ly,nx,ny,sol.u)
 Plots.plot(sol.t,E,linewidth=2,legend=:bottom,label="E")
 Plots.plot!(sol.t,Z,linewidth=2,legend=:bottom,label="Z")
+
+P,O = zonalpower(lx,ly,nx,ny,Λ,sol.u)
+modes = Vector(["$a" for a in 0:1:nx-1])
+Plots.plot(sol.t,P,yscale=:log,labels=modes,legend=:outertopright,linewidth=2)
+Plots.plot(sol.t,O,yscale=:log,labels=modes,legend=:outertopright,linewidth=2)
 
 uxy = inversefourier(nx,ny,Λ,sol.u)
 Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")

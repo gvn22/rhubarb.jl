@@ -74,6 +74,7 @@ Plots.plot(angles,A[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
 Plots.plot(sol2.t,angles,A',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 
 ## GCE2
+
 sol3 = gce2(lx,ly,nx,ny,Λ,T)
 E,Z = energy(lx,ly,nx,ny,Λ,sol3.u)
 Plots.plot(sol3.t,E,linewidth=2,legend=:bottom,label="E")

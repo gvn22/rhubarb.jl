@@ -1,7 +1,6 @@
-using OrdinaryDiffEq
-using RecursiveArrayTools,DiffEqCallbacks
+using DifferentialEquations
+using RecursiveArrayTools
 using FFTW, LinearAlgebra
-using ODEInterfaceDiffEq
 using Plots
 using TimerOutputs
 
@@ -29,14 +28,14 @@ function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64)
 
 end
 
-function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64,Ω::Float64,θ::Float64)
+function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64,νn::Float64)
 
     # u0 = rand(ComplexF64,2*ny-1,nx)
     tspan = (0.0,T)
     u0 = ic_rand(lx,ly,nx,ny)
 
     A = acoeffs(ly,ny)
-    B = bcoeffs(lx,ly,nx,ny,Ω,θ)
+    B = bcoeffs(lx,ly,nx,ny,νn)
     Cp,Cm = ccoeffs(lx,ly,nx,ny)
     p = [nx,ny,A,B,Cp,Cm]
 
@@ -47,14 +46,14 @@ function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64,Ω::Float64,θ:
 
 end
 
-function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64,νn::Float64)
+function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64,Ω::Float64,θ::Float64)
 
     # u0 = rand(ComplexF64,2*ny-1,nx)
     tspan = (0.0,T)
     u0 = ic_rand(lx,ly,nx,ny)
 
     A = acoeffs(ly,ny)
-    B = bcoeffs(lx,ly,nx,ny,νn)
+    B = bcoeffs(lx,ly,nx,ny,Ω,θ)
     Cp,Cm = ccoeffs(lx,ly,nx,ny)
     p = [nx,ny,A,B,Cp,Cm]
 
@@ -214,14 +213,14 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64)
 
 end
 
-function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Float64,θ::Float64)
+function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,νn::Float64)
 
     # u0 = rand(ComplexF64,2*ny-1,nx)
     tspan = (0.0,T)
     u0 = ic_cumulants(nx,ny,Λ,ic_rand(lx,ly,nx,ny))
 
     A = acoeffs(ly,ny)
-    B = bcoeffs(lx,ly,nx,ny,Ω,θ)
+    B = bcoeffs(lx,ly,nx,ny,νn)
     Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
     p = [nx,ny,Λ,A,B,Cp,Cm]
 
@@ -237,14 +236,14 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Flo
 
 end
 
-function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,νn::Float64)
+function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Float64,θ::Float64)
 
     # u0 = rand(ComplexF64,2*ny-1,nx)
     tspan = (0.0,T)
     u0 = ic_cumulants(nx,ny,Λ,ic_rand(lx,ly,nx,ny))
 
     A = acoeffs(ly,ny)
-    B = bcoeffs(lx,ly,nx,ny,νn)
+    B = bcoeffs(lx,ly,nx,ny,Ω,θ)
     Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
     p = [nx,ny,Λ,A,B,Cp,Cm]
 
@@ -307,11 +306,12 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Flo
 
 end
 
-# global code
+## Parameters
+
 lx = 4.0*Float64(pi)
 ly = 2.0*Float64(pi)
-nx = 8
-ny = 6
+nx = 4
+ny = 4
 T = 500.0
 Ω = 2.0*Float64(pi)
 θ = Float64(pi)/6.0
@@ -324,7 +324,9 @@ plotly()
 xx = LinRange(-lx/2,lx/2,2*nx-1)
 yy = LinRange(-ly/2,ly/2,2*ny-1)
 angles = yy*180.0/ly
-modes = ["0" "1" "2" "3"]
+modes = ["0" "1" "2" "3" "4" "5"]
+
+## NL
 
 sol1 = exec(lx,ly,nx,ny,T,Ω,θ,νn,Δθ,τ)
 
@@ -344,25 +346,28 @@ A = meanvorticity(lx,ly,nx,ny,sol1.u)
 Plots.plot(angles,A[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
 Plots.plot(sol1.t,angles,A',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 
-Λ = 1
+## GQL
+
+Λ = 0
 
 sol2 = gql(lx,ly,nx,ny,Λ,T,Ω,θ,νn,Δθ,τ)
 E,Z = energy(lx,ly,nx,ny,sol2.u)
 Plots.plot(sol2.t,E,linewidth=2,legend=:bottom,label="E")
 Plots.plot!(sol2.t,Z,linewidth=2,legend=:bottom,label="Z")
 
+P,O = zonalpower(lx,ly,nx,ny,sol2.u)
+Plots.plot(sol2.t,P,yscale=:log10,yaxis=("Energy in Mode m",(1e-6,1e3)),labels=modes,legend=:outertopright,linewidth=2)
+Plots.plot(sol2.t,O,yscale=:log,labels=modes,legend=:outertopright,linewidth=2)
+
 uxy = inversefourier(nx,ny,sol2.u)
 Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-
-P,O = zonalpower(lx,ly,nx,ny,sol2.u)
-Plots.plot(sol2.t,P,yscale=:log,labels=modes,legend=:outertopright,linewidth=2)
-Plots.plot(sol2.t,O,yscale=:log,labels=modes,legend=:outertopright,linewidth=2)
 
 A = meanvorticity(lx,ly,nx,ny,sol2.u)
 Plots.plot(angles,A[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
 Plots.plot(sol2.t,angles,A',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 
+## GCE2
 sol3 = gce2(lx,ly,nx,ny,Λ,T,Ω,θ,νn,Δθ,τ)
 E,Z = energy(lx,ly,nx,ny,Λ,sol3.u)
 Plots.plot(sol3.t,E,linewidth=2,legend=:bottom,label="E")
@@ -379,3 +384,5 @@ Plots.plot(sol3.t,angles,A',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 uxy = inversefourier(nx,ny,Λ,sol3.u)
 Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+
+## tests

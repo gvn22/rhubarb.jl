@@ -29,7 +29,7 @@ T = 500.0
 νn = 0.0
 Δθ = 0.05
 τ = 2.0
-u0 = ic_eqm(lx,ly,nx,ny,Ω,Δθ) + ic_rand(lx,ly,nx,ny)
+u0 = ic_eqm(lx,ly,nx,ny,Ω,Δθ) + ic_rand(lx,ly,nx,ny)/100.0
 
 plotlyjs()
 
@@ -54,15 +54,15 @@ uxy = inversefourier(nx,ny,sol1.u)
 Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
-A = meanvorticity(lx,ly,nx,ny,sol1.u)
-Plots.plot(angles,A[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
-Plots.plot(sol1.t,angles,A',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
+A1 = meanvorticity(lx,ly,nx,ny,sol1.u)
+Plots.plot(angles,A1[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
+Plots.plot(sol1.t,angles,A1',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 
 ## GQL
 
-Λ = 0
+Λ = 2
 
-sol2 = gql(lx,ly,nx,ny,Λ,T,u0)
+sol2 = gql(lx,ly,nx,ny,Λ,T,Ω,θ,νn,Δθ,τ,u0)
 E,Z = energy(lx,ly,nx,ny,sol2.u)
 Plots.plot(sol2.t,E,linewidth=2,legend=:bottom,label="E")
 Plots.plot!(sol2.t,Z,linewidth=2,legend=:bottom,label="Z")
@@ -75,13 +75,13 @@ uxy = inversefourier(nx,ny,sol2.u)
 Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
-A = meanvorticity(lx,ly,nx,ny,sol2.u)
+A2 = meanvorticity(lx,ly,nx,ny,sol2.u)
 Plots.plot(angles,A[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
-Plots.plot(sol2.t,angles,A',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
+Plots.plot(sol2.t,angles,A2',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 
 ## GCE2
 
-sol3 = gce2(lx,ly,nx,ny,Λ,T,u0)
+sol3 = gce2(lx,ly,nx,ny,Λ,T,Ω,θ,νn,Δθ,τ,u0)
 E,Z = energy(lx,ly,nx,ny,Λ,sol3.u)
 Plots.plot(sol3.t,E,linewidth=2,legend=:bottom,label="E")
 Plots.plot!(sol3.t,Z,linewidth=2,legend=:bottom,label="Z")

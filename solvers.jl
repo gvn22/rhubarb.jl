@@ -28,7 +28,7 @@ function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64,u0::Array{Compl
     p = [nx,ny,A,B,Cp,Cm]
 
     prob = ODEProblem(nl_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=5,dense=false)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=20,dense=false)
 
     return sol
 

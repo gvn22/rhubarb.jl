@@ -30,7 +30,8 @@ u0 = ic_rand(lx,ly,nx,ny)
 Δθ = 0.05
 τ = 2.0
 
-plotly()
+plotlyjs()
+# inline("png")
 
 xx = LinRange(-lx/2,lx/2,2*nx-1)
 yy = LinRange(-ly/2,ly/2,2*ny-1)

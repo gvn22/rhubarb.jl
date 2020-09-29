@@ -96,6 +96,7 @@ function zonalpower(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{Arr
     for i in eachindex(u)
 
         for m1 = 0:1:Λ
+
             n1min = m1 == 0 ? 1 : -(ny-1)
             for n1 = n1min:1:ny-1
 

@@ -38,7 +38,7 @@ function ic_rand(lx::Float64,ly::Float64,nx::Int,ny::Int)
     umn = fftshift(fft(uxy))
     umn[ny,nx] = 0.0 + im*0.0
 
-    return umn[:,nx:2*nx-1]/100.0
+    return umn[:,nx:2*nx-1]
 
 end
 

@@ -4,7 +4,7 @@ using FFTW, LinearAlgebra
 using Plots
 using TimerOutputs
 using Logging
-ENV["JULIA_DEBUG"] = Main
+# ENV["JULIA_DEBUG"] = Main
 
 include("coefficients.jl")
 
@@ -22,16 +22,16 @@ ly = 2.0*Float64(pi)
 nx = 3
 ny = 3
 T = 500.0
-u0 = ic_rand(lx,ly,nx,ny)
+# u0 = ic_rand(lx,ly,nx,ny)
 
 Ω = 2.0*Float64(pi)
 θ = Float64(pi)/6.0
 νn = 0.0
 Δθ = 0.05
 τ = 2.0
+u0 = ic_eqm(lx,ly,nx,ny,Ω,Δθ) + ic_rand(lx,ly,nx,ny)
 
 plotlyjs()
-# inline("png")
 
 xx = LinRange(-lx/2,lx/2,2*nx-1)
 yy = LinRange(-ly/2,ly/2,2*ny-1)
@@ -40,7 +40,7 @@ modes = ["0" "1" "2" "3" "4" "5" "6"]
 
 ## NL
 
-sol1 = exec(lx,ly,nx,ny,T,u0)
+sol1 = exec(lx,ly,nx,ny,T,Ω,θ,νn,Δθ,τ,u0)
 
 E,Z = energy(lx,ly,nx,ny,sol1.u)
 Plots.plot(sol1.t,E,linewidth=2,legend=:bottom,xaxis="t",label="E")
@@ -60,7 +60,7 @@ Plots.plot(sol1.t,angles,A',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 
 ## GQL
 
-Λ = 2
+Λ = 0
 
 sol2 = gql(lx,ly,nx,ny,Λ,T,u0)
 E,Z = energy(lx,ly,nx,ny,sol2.u)
@@ -83,7 +83,7 @@ Plots.plot(sol2.t,angles,A',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 
 sol3 = gce2(lx,ly,nx,ny,Λ,T,u0)
 E,Z = energy(lx,ly,nx,ny,Λ,sol3.u)
-Plots.plot(sol3.t,E,linewidth=2,    legend=:bottom,label="E")
+Plots.plot(sol3.t,E,linewidth=2,legend=:bottom,label="E")
 Plots.plot!(sol3.t,Z,linewidth=2,legend=:bottom,label="Z")
 
 P,O = zonalpower(lx,ly,nx,ny,Λ,sol3.u)

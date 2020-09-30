@@ -17,10 +17,10 @@ include("analysis.jl")
 
 ## Parameters
 
-lx = 2.0*Float64(pi)
+lx = 4.0*Float64(pi)
 ly = 2.0*Float64(pi)
-nx = 3
-ny = 3
+nx = 6
+ny = 6
 T = 500.0
 # u0 = ic_rand(lx,ly,nx,ny)
 
@@ -60,7 +60,7 @@ Plots.plot(sol1.t,angles,A1',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 
 ## GQL
 
-Λ = 2
+Λ = 0
 
 sol2 = gql(lx,ly,nx,ny,Λ,T,Ω,θ,νn,Δθ,τ,u0)
 E,Z = energy(lx,ly,nx,ny,sol2.u)
@@ -68,16 +68,16 @@ Plots.plot(sol2.t,E,linewidth=2,legend=:bottom,label="E")
 Plots.plot!(sol2.t,Z,linewidth=2,legend=:bottom,label="Z")
 
 P,O = zonalpower(lx,ly,nx,ny,sol2.u)
-Plots.plot(sol2.t,P,yscale=:log10,yaxis=("Energy in Mode m"),labels=modes,legend=:outertopright,linewidth=2)
+Plots.plot(sol2.t,P,yscale=:log10,yaxis=("Energy in Mode m",(1e-3,1e3)),labels=modes,legend=:outertopright,linewidth=2)
 # Plots.plot(sol2.t,O,yscale=:log,labels=modes,legend=:outertopright,linewidth=2)
 
 uxy = inversefourier(nx,ny,sol2.u)
 Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
-A2 = meanvorticity(lx,ly,nx,ny,sol2.u)
+A2_0 = meanvorticity(lx,ly,nx,ny,sol2.u)
 Plots.plot(angles,A[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
-Plots.plot(sol2.t,angles,A2',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
+Plots.plot(sol2.t,angles,A2_0',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 
 ## GCE2
 
@@ -90,13 +90,27 @@ P,O = zonalpower(lx,ly,nx,ny,Λ,sol3.u)
 Plots.plot(sol3.t,P,yscale=:log10,yaxis=("Energy in Mode m"),labels=modes,legend=:outertopright,linewidth=2)
 # Plots.plot(sol3.t,O,yscale=:log10,labels=modes,legend=:outertopright,linewidth=2)
 
-A = meanvorticity(lx,ly,nx,ny,Λ,sol3.u)
+A3_0 = meanvorticity(lx,ly,nx,ny,Λ,sol3.u)
 Plots.plot(angles,A[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GCE2")
-Plots.plot(sol3.t,angles,A',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
+Plots.plot(sol3.t,angles,A3_0',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 
 uxy = inversefourier(nx,ny,Λ,sol3.u)
 Plots.plot(xx,yy,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.plot(xx,yy,uxy[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+
+## vorticity plots
+
+Plots.plot(angles,A1[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
+Plots.plot!(angles,A2[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GQL(2)")
+Plots.plot!(angles,A3[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GCE2(2)")
+
+Plots.plot(angles,A1[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
+Plots.plot!(angles,A2_1[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GQL(1)")
+Plots.plot!(angles,A3_1[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GCE2(1)")
+
+Plots.plot(angles,A1[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
+Plots.plot!(angles,A2_0[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GQL(0)")
+Plots.plot!(angles,A3_0[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GCE2(0)")
 
 ## tests
 Λ = 0

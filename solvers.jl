@@ -1,3 +1,5 @@
+## NL
+
 function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64)
 
     # u0 = rand(ComplexF64,2*ny-1,nx)
@@ -140,6 +142,8 @@ function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64,Ω::Float64,θ:
 
 end
 
+## GQL
+
 function gql(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64)
 
     # u0 = rand(ComplexF64,2*ny-1,nx)
@@ -224,7 +228,7 @@ function gql(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Floa
     p = [nx,ny,Λ,A,B,Cp,Cm]
 
     prob = ODEProblem(gql_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=20,dense=false)
 
     return sol
 
@@ -281,6 +285,8 @@ function gql(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Floa
     return sol
 
 end
+
+## GCE2
 
 function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64)
 
@@ -391,7 +397,8 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Flo
     # affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
     # cb = PresetTimeCallback(poschecktimes,affect!)
 
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+    # @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=20,dense=false)
 
     return sol
 

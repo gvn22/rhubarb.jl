@@ -100,7 +100,7 @@ function modalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{Ar
                 kx = 2.0*Float64(pi)/lx*m1
                 ky = 2.0*Float64(pi)/ly*n1
 
-                E[i,n1+ny,m1+1] = abs(u[i].x[1][n1 + ny,m1 + 1])^2
+                E[i,n1+ny,m1+1] = abs(u[i].x[1][n1 + ny,m1 + 1])
 
             end
         end
@@ -111,7 +111,7 @@ function modalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{Ar
                 kx = 2.0*Float64(pi)/lx*m1
                 ky = 2.0*Float64(pi)/ly*n1
 
-                E[i,n1+ny,m1+1] = abs(u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ])
+                E[i,n1+ny,m1+1] = sqrt(abs(u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ]))
 
             end
         end

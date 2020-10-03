@@ -29,7 +29,7 @@ T = 500.0
 νn = 0.0
 Δθ = 0.05
 τ = 2.0
-# u0 = ic_eqm(lx,ly,nx,ny,Ω,Δθ) + ic_rand(lx,ly,nx,ny)/10.0
+u0 = ic_eqm(lx,ly,nx,ny,Ω,Δθ) + ic_rand(lx,ly,nx,ny)/100.0
 u0 = ic_eqm(lx,ly,nx,ny,Ω,Δθ)
 
 plotlyjs()
@@ -69,7 +69,7 @@ Plots.plot(sol1.t,angles,A1',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 
 ## GQL
 
-Λ = 1
+Λ = 0
 
 sol2 = gql(lx,ly,nx,ny,Λ,T,Ω,θ,u0)
 E,Z = energy(lx,ly,nx,ny,sol2.u)

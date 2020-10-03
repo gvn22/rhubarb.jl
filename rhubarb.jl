@@ -29,15 +29,16 @@ T = 500.0
 νn = 0.0
 Δθ = 0.05
 τ = 2.0
-u0 = ic_eqm(lx,ly,nx,ny,Ω,Δθ) + ic_rand(lx,ly,nx,ny)/100.0
-u0 = ic_eqm(lx,ly,nx,ny,Ω,Δθ)
+u0 = ic_eqm(lx,ly,nx,ny,Ω,Δθ) + ic_rand(lx,ly,nx,ny)/10.0
+# u0 = ic_eqm(lx,ly,nx,ny,Ω,Δθ)
 
 plotlyjs()
 
 xx = LinRange(-lx/2,lx/2,2*nx-1)
 yy = LinRange(-ly/2,ly/2,2*ny-1)
 angles = yy*180.0/ly
-modes = ["0" "1" "2" "3" "4" "5" "6"]
+zones = ["$i" for i = 0:1:nx-1]
+modes = ["($j,$i)" for j = 0:1:nx-1 for i=-(ny-1):1:ny-1]
 
 ## NL
 
@@ -72,6 +73,7 @@ Plots.plot(sol1.t,angles,A1',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 Λ = 0
 
 sol2 = gql(lx,ly,nx,ny,Λ,T,Ω,θ,u0)
+
 E,Z = energy(lx,ly,nx,ny,sol2.u)
 Plots.plot(sol2.t,E,linewidth=2,legend=:bottom,label="E")
 Plots.plot!(sol2.t,Z,linewidth=2,legend=:bottom,label="Z")
@@ -97,9 +99,11 @@ Plots.plot(angles,A[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
 Plots.plot(sol2.t,angles,A2_0',yaxis="θ",st=:contourf,color=:bwr,xaxis="t")
 
 ## GCE2
-u0c = ic_cumulants(nx,ny,Λ,u0)
+
+Λ = 0
 
 sol3 = gce2(lx,ly,nx,ny,Λ,T,Ω,θ,u0)
+
 E,Z = energy(lx,ly,nx,ny,Λ,sol3.u)
 Plots.plot(sol3.t,E,linewidth=2,legend=:bottom,label="E")
 Plots.plot!(sol3.t,Z,linewidth=2,legend=:bottom,label="Z")

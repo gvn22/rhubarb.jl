@@ -65,14 +65,14 @@ end
 
 function ic_cumulants(nx::Int,ny::Int,Λ::Int,u0::Array{ComplexF64,2})
 
-    u0_low = u0[:,1:Λ+1]
+    u0_low::Array{ComplexF64,2} = u0[:,1:Λ+1]
     for n = 1:1:ny-1
-        u0_low[n,1] = u0_low[2*ny - n,1]
+        u0_low[n,1] = conj(u0_low[2*ny - n,1])
     end
-    u0_low[ny,1] = 0.0 + im*0.0
+    # u0_low[ny,1] = 0.0 + im*0.0
 
     # u0_high = zeros(ComplexF64,2*ny-1,nx-Λ-1,2*ny-1,nx-Λ-1)
-    u0_high=zeros(ComplexF64,2*ny-1,nx-Λ,2*ny-1,nx-Λ)
+    u0_high::Array{ComplexF64,4} = zeros(ComplexF64,2*ny-1,nx-Λ,2*ny-1,nx-Λ)
     for m1=Λ+1:1:nx-1
         for n1=-ny+1:1:ny-1
             for m2=Λ+1:1:nx-1

@@ -62,6 +62,66 @@ function energy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{ArrayPa
 
 end
 
+function modalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF64,2},1})
+
+    E = zeros(Float64,length(u),2*ny-1,nx)
+
+    for i in eachindex(u)
+
+        for m1 = 0:1:nx-1
+            n1min = m1 == 0 ? 1 : -(ny-1)
+            for n1 = n1min:1:ny-1
+
+                kx = 2.0*Float64(pi)/lx*m1
+                ky = 2.0*Float64(pi)/ly*n1
+
+                E[i,n1+ny,m1+1] = abs(u[i][n1 + ny,m1 + 1])
+
+            end
+        end
+
+    end
+
+    return E
+
+end
+
+function modalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{Float64},Tuple{Array{Complex{Float64},2},Array{Complex{Float64},4}}},1})
+
+    E = zeros(Float64,length(u),2*ny-1,nx)
+
+    for i in eachindex(u)
+
+        for m1 = 0:1:Λ
+
+            n1min = m1 == 0 ? 1 : -(ny-1)
+            for n1 = n1min:1:ny-1
+
+                kx = 2.0*Float64(pi)/lx*m1
+                ky = 2.0*Float64(pi)/ly*n1
+
+                E[i,n1+ny,m1+1] = abs(u[i].x[1][n1 + ny,m1 + 1])
+
+            end
+        end
+
+        for m1 = Λ+1:1:nx-1
+            for n1 = -(ny-1):1:ny-1
+
+                kx = 2.0*Float64(pi)/lx*m1
+                ky = 2.0*Float64(pi)/ly*n1
+
+                E[i,n1+ny,m1+1] = sqrt(abs(u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ]))
+
+            end
+        end
+
+    end
+
+    return E
+
+end
+
 function zonalpower(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF64,2},1})
 
     P = zeros(Float64,length(u),nx)

@@ -332,13 +332,15 @@ function gce2_eqs!(du,u,p,t)
                     accumulator_nl::ComplexF64 = 0.0 + 0.0im
                     accumulator_li::ComplexF64 = 0.0 + 0.0im
 
+                    accumulator_li += temp_li[n+ny,m-Λ,n+ny,m-Λ]*u.x[2][n+ny,m-Λ,n3+ny,m3-Λ]
+
                     # from H+L
                     for m1=max(Λ+1,m-Λ):1:min(M,m)
                         n2min = m1 == m ? 1 : -N
                         for n1=max(-N,n-N):1:min(n-n2min,N)
 
                             accumulator_nl += temp_nl[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
-                            accumulator_li += temp_li[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
+                            # accumulator_li += temp_li[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
 
                         end
                     end
@@ -349,7 +351,7 @@ function gce2_eqs!(du,u,p,t)
                         for n1=max(-N,n-n2max):1:min(n+N,N)
 
                             accumulator_nl += temp_nl[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
-                            accumulator_li += temp_li[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
+                            # accumulator_li += temp_li[n1+ny,m1-Λ,n+ny,m-Λ]*u.x[2][n1+ny,m1-Λ,n3+ny,m3-Λ]
 
                         end
                     end

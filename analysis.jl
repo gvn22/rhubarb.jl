@@ -64,7 +64,7 @@ end
 
 function modalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF64,2},1})
 
-    E = zeros(Float64,length(u),2*ny-1,nx)
+    E = zeros(Float64,length(u),(2*ny-1)*nx)
 
     for i in eachindex(u)
 
@@ -75,7 +75,7 @@ function modalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{Comp
                 kx = 2.0*Float64(pi)/lx*m1
                 ky = 2.0*Float64(pi)/ly*n1
 
-                E[i,n1+ny,m1+1] = abs(u[i][n1 + ny,m1 + 1])
+                E[i,m1*(2*ny-1) + n1+ny] = abs(u[i][n1 + ny,m1 + 1])
 
             end
         end
@@ -88,7 +88,7 @@ end
 
 function modalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{Float64},Tuple{Array{Complex{Float64},2},Array{Complex{Float64},4}}},1})
 
-    E = zeros(Float64,length(u),2*ny-1,nx)
+    E = zeros(Float64,length(u),(2*ny-1)*nx)
 
     for i in eachindex(u)
 
@@ -100,7 +100,7 @@ function modalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{Ar
                 kx = 2.0*Float64(pi)/lx*m1
                 ky = 2.0*Float64(pi)/ly*n1
 
-                E[i,n1+ny,m1+1] = abs(u[i].x[1][n1 + ny,m1 + 1])
+                E[i,m1*(2*ny-1) + n1+ny] = abs(u[i].x[1][n1 + ny,m1 + 1])
 
             end
         end
@@ -111,7 +111,7 @@ function modalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{Ar
                 kx = 2.0*Float64(pi)/lx*m1
                 ky = 2.0*Float64(pi)/ly*n1
 
-                E[i,n1+ny,m1+1] = sqrt(abs(u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ]))
+                E[i,m1*(2*ny-1) + n1+ny] = sqrt(abs(u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ]))
 
             end
         end

@@ -322,6 +322,8 @@ function gce2_eqs!(du,u,p,t)
         end
     end
 
+    accumulator_li::ComplexF64 = 0.0 + 0.0im
+
     # H'*H
     # println("HH+")
     for m3=Λ+1:1:M
@@ -330,7 +332,6 @@ function gce2_eqs!(du,u,p,t)
                 for n=-N:1:N
 
                     accumulator_nl::ComplexF64 = 0.0 + 0.0im
-                    accumulator_li::ComplexF64 = 0.0 + 0.0im
 
                     # accumulator_li = temp_li[n+ny,m-Λ,n+ny,m-Λ]*u.x[2][n+ny,m-Λ,n3+ny,m3-Λ]
                     accumulator_li = B[n+ny,m+1]*u.x[2][n+ny,m-Λ,n3+ny,m3-Λ]

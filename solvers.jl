@@ -229,6 +229,7 @@ function gql(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Floa
 
     prob = ODEProblem(gql_eqs!,u0,tspan,p)
     @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=20,dense=false)
+    # @time sol = solve(prob,RK4(),dt=0.0005,adaptive=false,save_start=true,save_everystep=false,saveat=20,progress=true,progress_steps=1000,dense=false)
 
     return sol
 
@@ -326,11 +327,11 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,u0f::Ar
     # poschecktimes = range(1.0,T,step=20.0)
     # condition(u,t,integrator) = t ∈ poschecktimes && !ispositive(u.x[2],nx,ny,Λ)
     # affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
-    # cb = PresetTimeCallback(poschecktimes,affect!)
+    # cb = PresetTimeCallback(poschecktimes,affect!,save_positions=(false,false))
 
     # @time sol = solve(prob,RK4(),callback=cb,adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=20,dense=false)
-    # @time sol = solve(prob,RK4(),callback=cb,dt=0.0005,adaptive=false,progress=true,progress_steps=1000,dense=false)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=20,dense=false)
+    @time sol = solve(prob,RK4(),dt=0.0005,adaptive=false,progress=true,progress_steps=1000,dense=false)
+    # @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=20,dense=false)
 
     return sol
 
@@ -376,7 +377,7 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Flo
     affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
     cb = PresetTimeCallback(poschecktimes,affect!)
 
-    @time sol = solve(prob,RK4(),callback=cb,adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+    @time sol = solve(prob,RK4(),callback=cb,adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,start=true,everystep=false,saveat=50)
 
     return sol
 
@@ -396,9 +397,10 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Flo
     # poschecktimes = range(1.0,T,step=20.0)
     # condition(u,t,integrator) = t ∈ poschecktimes && !ispositive(u.x[2],nx,ny,Λ)
     # affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
-    # cb = PresetTimeCallback(poschecktimes,affect!,save_positions=(false,false))
+    # cb = PresetTimeCallback(poschecktimes,affect!,positions=(false,false))
 
     # @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
+    # @time sol = solve(prob,RK4(),dt=0.0005,adaptive=false,save_start=true,save_everystep=false,saveat=20,progress=true,progress_steps=1000,dense=false)
     @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=20,dense=false)
 
     return sol

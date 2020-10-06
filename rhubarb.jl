@@ -16,7 +16,7 @@ include("analysis.jl")
 lx = 2.0*Float64(pi)
 ly = 2.0*Float64(pi)
 nx = 2
-ny = 2
+ny = 3
 T = 500.0
 
 Ω = 2.0*Float64(pi)
@@ -35,7 +35,8 @@ modes = reshape(["($j,$i)" for j=0:1:nx-1 for i=-(ny-1):1:ny-1],1,nx*(2*ny-1))
 
 # plotlyjs();
 pyplot();
-dn = "tests/2x2/icjet+randby10+beta+nl+tropic/"
+# dn = "tests/2x3/icjet+randby10+nl+tropic/"
+dn = "tests/2x3/icjet+randby10+beta+nl+tropic/"
 
 ## NL
 
@@ -62,22 +63,22 @@ _u = Plots.plot(xx,yy,U1[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.savefig(_u,dn*"NL_z_end.png")
 
 ## GQL
-Λ = 1
+Λ = 0
 # sol2 = gql(lx,ly,nx,ny,Λ,T,u0)
 sol2 = gql(lx,ly,nx,ny,Λ,T,Ω,θ,u0)
 
 E2,Z2 = energy(lx,ly,nx,ny,sol2.u)
 _ez = Plots.plot(sol2.t,E2,linewidth=2,label="E")
 _ez = Plots.plot!(sol2.t,Z2,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",xaxis="Time",label="Z")
-Plots.savefig(_ez,dn*"GQL_"*"$Λ"*"_ez_t.png")
+Plots.savefig(_ez,dn*"GQL_"*"$Λ"*"_dt005_ez_t.png")
 
 P2,O2 = zonalpower(lx,ly,nx,ny,sol2.u)
 _p = Plots.plot(sol2.t,P2,yscale=:log10,xaxis=("Time"),yaxis=("Energy in Mode"),labels=zones,legend=:right,linewidth=2)
-Plots.savefig(_p,dn*"GQL_"*"$Λ"*"_em_t.png")
+Plots.savefig(_p,dn*"GQL_"*"$Λ"*"_dt005_em_t.png")
 
 M2 = modalenergy(lx,ly,nx,ny,sol2.u)
 _m = Plots.plot(sol2.t,M2,labels=modes,legend=:outerright,linewidth=2,xaxis=("Time"),yaxis="Mode Strength")
-Plots.savefig(_m,dn*"GQL_"*"$Λ"*"_m_t.png")
+Plots.savefig(_m,dn*"GQL_"*"$Λ"*"_dt005_m_t.png")
 
 U2 = inversefourier(nx,ny,sol2.u)
 _u = Plots.plot(xx,yy,U2[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
@@ -93,21 +94,21 @@ sol3 = gce2(lx,ly,nx,ny,Λ,T,Ω,θ,u0)
 E3,Z3 = energy(lx,ly,nx,ny,Λ,sol3.u)
 _ez = Plots.plot(sol3.t,E3,linewidth=2,label="E")
 _ez = Plots.plot!(sol3.t,Z3,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",xaxis="Time",label="Z")
-Plots.savefig(_ez,dn*"GCE2_"*"$Λ"*"_fix_ez_t.png")
+Plots.savefig(_ez,dn*"GCE2_"*"$Λ"*"_dt005_ez_t.png")
 
 P3,O3 = zonalpower(lx,ly,nx,ny,Λ,sol3.u)
 _p = Plots.plot(sol3.t,P3,yscale=:log10,xaxis=("Time"),yaxis=("Energy in Mode"),labels=zones,legend=:right,linewidth=2)
-Plots.savefig(_p,dn*"GCE2_"*"$Λ"*"_fix_em_t.png")
+Plots.savefig(_p,dn*"GCE2_"*"$Λ"*"_dt005_em_t.png")
 
 M3 = modalenergy(lx,ly,nx,ny,Λ,sol3.u)
 _m = Plots.plot(sol3.t,M3,labels=modes,legend=:outerright,linewidth=2,xaxis=("Time"),yaxis="Mode Strength")
-Plots.savefig(_m,dn*"GCE2_"*"$Λ"*"_fix_m_t.png")
+Plots.savefig(_m,dn*"GCE2_"*"$Λ"*"_dt005_m_t.png")
 
 U3 = inversefourier(nx,ny,Λ,sol3.u)
 _u = Plots.plot(xx,yy,U3[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-Plots.savefig(_u,dn*"GCE2_"*"$Λ"*"_fix_z_init.png")
+Plots.savefig(_u,dn*"GCE2_"*"$Λ"*"_dt005_z_init.png")
 _u = Plots.plot(xx,yy,U3[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-Plots.savefig(_u,dn*"GCE2_"*"$Λ"*"_fix_z_end.png")
+Plots.savefig(_u,dn*"GCE2_"*"$Λ"*"_dt005_z_end.png")
 
 ## vorticity plots
 

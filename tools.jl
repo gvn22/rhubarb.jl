@@ -15,13 +15,15 @@ function ispositive(cumulant::Array{ComplexF64,4},nx::Int,ny::Int,Λ::Int)
         end
     end
 
+    @info "Second cumulant is positive definite = ", isposdef(twopoint)
     return isposdef(twopoint)
 
 end
 
 function positivity!(cumulant::Array{ComplexF64,4},nx::Int,ny::Int,Λ::Int)
 
-    println("Removing negative eignvalues from two-point correlation...")
+    @info "Removing negative eignvalues from second cumulant..."
+    # println("Removing negative eignvalues from two-point correlation...")
     twopoint = zeros(ComplexF64,(2*ny-1)*nx,(2*ny-1)*nx)
 
     for m=Λ+1:1:nx-1
@@ -38,6 +40,7 @@ function positivity!(cumulant::Array{ComplexF64,4},nx::Int,ny::Int,Λ::Int)
 
     D = eigvals(twopoint)
     V = eigvecs(twopoint)
+    D_neg = [d for d in D]
     D_pos = [d = real(d) < 0.0 ? 0.0 + imag(d)*im : real(d) + imag(d)*im for d in D]
     # use mul!
     twopoint = V*(D_pos.*V')
@@ -53,6 +56,52 @@ function positivity!(cumulant::Array{ComplexF64,4},nx::Int,ny::Int,Λ::Int)
             end
         end
     end
+
+    @info "All eignvalues: ", D_neg
+
+end
+
+function positivity2!(cumulant::Array{ComplexF64,4},nx::Int,ny::Int,Λ::Int)
+
+    @info "Removing negative eignvalues from second cumulant..."
+    # println("Removing negative eignvalues from two-point correlation...")
+    twopoint = zeros(ComplexF64,(2*ny-1)*nx,(2*ny-1)*nx)
+
+    for m=Λ+1:1:nx-1
+        for n=-ny+1:1:ny-1
+            for m3=Λ+1:1:nx-1
+                for n3=-ny+1:1:ny-1
+
+                    twopoint[(n+ny)*(nx-1) + m-Λ,(n3+ny)*(nx-1) + m3-Λ] = cumulant[n+ny,m-Λ,n3+ny,m3-Λ]
+
+                end
+            end
+        end
+    end
+
+    P, _ = prox(IndPSD(), twopoint)
+
+    # D = eigvals(twopoint)
+    # V = eigvecs(twopoint)
+    # D_neg = [d for d in D]
+    # D_pos = [d = real(d) < 0.0 ? 0.0 + imag(d)*im : real(d) + imag(d)*im for d in D]
+    # # use mul!
+    # twopoint = V*(D_pos.*V')
+
+    for m=Λ+1:1:nx-1
+        for n=-ny+1:1:ny-1
+            for m3=Λ+1:1:nx-1
+                for n3=-ny+1:1:ny-1
+
+                     cumulant[n+ny,m-Λ,n3+ny,m3-Λ] = P[(n+ny)*(nx-1) + m-Λ,(n3+ny)*(nx-1) + m3-Λ]
+
+                end
+            end
+        end
+    end
+
+    # @info "All eignvalues: ", twopoint
+    @info "All eignvalues: ", P
 
 end
 

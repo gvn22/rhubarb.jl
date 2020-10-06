@@ -281,8 +281,8 @@ function gql(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Floa
     p = [nx,ny,Λ,A,B,Cp,Cm]
 
     prob = ODEProblem(gql_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,dense=false,saveat=20)
-    # @time sol = solve(prob,RK4(),dt=0.001,progress=true,progress_steps=1000,save_start=true,save_everystep=false,dense=false,saveat=20)
+    # @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,dense=false,saveat=20)
+    @time sol = solve(prob,RK4(),dt=0.005,progress=true,progress_steps=1000,save_start=true,save_everystep=false,dense=false,saveat=20)
 
     return sol
 
@@ -473,8 +473,8 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Flo
     # cb = PresetTimeCallback(poschecktimes,affect!)
 
     # @time sol = solve(prob,RK4(),callback=cb,adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,dense=false,saveat=20)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,dense=false,saveat=20)
-    # @time sol = solve(prob,RK4(),dt=0.001,progress=true,progress_steps=1000,save_start=true,save_everystep=false,dense=false,saveat=20)
+    # @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,dense=false,saveat=20)
+    @time sol = solve(prob,RK4(),dt=0.005,progress=true,progress_steps=1000,save_start=true,save_everystep=false,dense=false,saveat=20)
 
     return sol
 

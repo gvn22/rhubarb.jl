@@ -18,8 +18,8 @@ include("analysis.jl")
 ## Parameters
 lx = 2.0*Float64(pi)
 ly = 2.0*Float64(pi)
-nx = 2
-ny = 2
+nx = 4
+ny = 4
 T = 500.0
 
 Ω = 2.0*Float64(pi)
@@ -41,10 +41,10 @@ pyplot();
 # dn = "tests/2x3/icjet+randby10+nl+tropic/"
 # dn = "tests/2x3/icjet+randby10+beta+nl+tropic/"
 # dn = "tests/3x3/icjet+randby10+beta+nl+tropic/"
-dn = "tests/2x2/icjet+randby10+beta+nl+jet/"
+# dn = "tests/2x2/icjet+randby10+beta+nl+jet/"
+dn = "tests/4x4/icjet+randby10+beta+nl+jet/"
 
 ## NL
-
 # sol1 = exec(lx,ly,nx,ny,T,u0)
 # sol1 = exec(lx,ly,nx,ny,T,Ω,θ,u0)
 sol1 = exec(lx,ly,nx,ny,T,Ω,θ,νn,Δθ,τ,u0)
@@ -55,7 +55,7 @@ _ez = Plots.plot!(sol1.t,Z1,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",x
 Plots.savefig(_ez,dn*"NL_ez_t.png")
 
 P1,O1 = zonalpower(lx,ly,nx,ny,sol1.u)
-_p = Plots.plot(sol1.t,P1,yscale=:log10,xaxis=("Time"),yaxis=("Energy in Mode",(1e-16,1e3)),labels=zones,legend=:right,linewidth=2)
+_p = Plots.plot(sol1.t,P1,yscale=:log10,xaxis=("Time"),yaxis=("Energy in Mode"),labels=zones,legend=:right,linewidth=2)
 Plots.savefig(_p,dn*"NL_em_t.png")
 
 M1 = modalenergy(lx,ly,nx,ny,sol1.u);
@@ -69,7 +69,7 @@ _u = Plots.plot(xx,yy,U1[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.savefig(_u,dn*"NL_z_end.png")
 
 ## GQL
-Λ = 1
+Λ = 3
 # sol2 = gql(lx,ly,nx,ny,Λ,T,u0)
 # sol2 = gql(lx,ly,nx,ny,Λ,T,Ω,θ,u0)
 sol2 = gql(lx,ly,nx,ny,Λ,T,Ω,θ,νn,Δθ,τ,u0)
@@ -80,7 +80,7 @@ _ez = Plots.plot!(sol2.t,Z2,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",x
 Plots.savefig(_ez,dn*"GQL_"*"$Λ"*"_ez_t.png")
 
 P2,O2 = zonalpower(lx,ly,nx,ny,sol2.u)
-_p = Plots.plot(sol2.t,P2,yscale=:log10,xaxis=("Time"),yaxis=("Energy in Mode",(1e-16,1e3)),labels=zones,legend=:right,linewidth=2)
+_p = Plots.plot(sol2.t,P2,yscale=:log10,xaxis=("Time"),yaxis=("Energy in Mode",(1e-20,1e3)),labels=zones,legend=:right,linewidth=2)
 Plots.savefig(_p,dn*"GQL_"*"$Λ"*"_em_t.png")
 
 M2 = modalenergy(lx,ly,nx,ny,sol2.u)
@@ -94,7 +94,6 @@ _u = Plots.plot(xx,yy,U2[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 Plots.savefig(_u,dn*"GQL_"*"$Λ"*"_z_end.png")
 
 ## GCE2
-
 # sol3 = gce2(lx,ly,nx,ny,Λ,T,u0)
 # sol3 = gce2(lx,ly,nx,ny,Λ,T,Ω,θ,u0)
 sol3 = gce2(lx,ly,nx,ny,Λ,T,Ω,θ,νn,Δθ,τ,u0)
@@ -105,7 +104,7 @@ _ez = Plots.plot!(sol3.t,Z3,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",x
 Plots.savefig(_ez,dn*"GCE2_"*"$Λ"*"_wcb_ez_t.png")
 
 P3,O3 = zonalpower(lx,ly,nx,ny,Λ,sol3.u)
-_p = Plots.plot(sol3.t,P3,yscale=:log10,xaxis=("Time"),yaxis=("Energy in Mode",(1e-16,1e3)),labels=zones,legend=:right,linewidth=2)
+_p = Plots.plot(sol3.t,P3,yscale=:log10,xaxis=("Time"),yaxis=("Energy in Mode",(1e-20,1e3)),labels=zones,legend=:right,linewidth=2)
 Plots.savefig(_p,dn*"GCE2_"*"$Λ"*"_wcb_em_t.png")
 
 M3 = modalenergy(lx,ly,nx,ny,Λ,sol3.u)
@@ -139,16 +138,7 @@ Plots.plot!(angles,A2_0[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GQL(0)
 Plots.plot!(angles,A3_0[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GCE2(0)")
 
 ## tests
-# Λ = 0
-# sol3_6p = gce2(lx,ly,nx,ny,Λ,T,u0)
-#
-# sol3_6p_dt001 = gce2(lx,ly,nx,ny,Λ,T,u0)
-# P,O = zonalpower(lx,ly,nx,ny,Λ,sol3_6p_dt001.u)
-# Plots.plot(sol3_6p_dt001.t,P,yscale=:log10,yaxis=("Energy in Mode m"),labels=modes,legend=:outertopright,linewidth=2)
-#
-# sol3_6p_dt0005 = gce2(lx,ly,nx,ny,Λ,T,u0)
-# P,O = zonalpower(lx,ly,nx,ny,Λ,sol3_6p_dt0005.u)
-# Plots.plot(sol3_6p_dt0005.t,P,yscale=:log10,yaxis=("Energy in Mode m"),labels=modes,legend=:outertopright,linewidth=2)
-#
-# sol3_7p = gce2(lx,ly,nx,ny,Λ,T,u0)
-# sol3_8p = gce2(lx,ly,nx,ny,Λ,T,u0)
+acs,js = acoeffs(ly,ny,Ω,Δθ,τ)
+@show acs,js
+js2 = ifft(ifftshift(acs))
+@show js, js2

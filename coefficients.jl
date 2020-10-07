@@ -1,76 +1,44 @@
 function acoeffs(ly::Float64,ny::Int)
-
-    A = zeros(ComplexF64,2*ny-1)
-    return A
-
+    zeros(ComplexF64,2*ny-1)
 end
 
 function acoeffs(ly::Float64,ny::Int,Ω::Float64,Δθ::Float64,τ::Float64)
-
-    A = zeros(ComplexF64,2*ny-1)
     ζjet = zeros(Float64,2*ny-1)
-
-    # jet vorticity is fraction of planetary vorticity
     Ξ::Float64 = 0.6*Ω
     κ::Float64 = τ == 0.0 ? 0.0 : 1.0/τ
-
     for y in 1:1:2*ny-1
         ζjet[y] = -κ*Ξ*tanh((ly/2.0 - 0.5*(2*y-1)/(2*ny-1)*ly)/Δθ)
     end
-    ζjet_fourier = fftshift(fft(ζjet))
-
-    for y in 1:1:2*ny-1
-        A[y,1] = ζjet_fourier[y]
-    end
-
-    return A
-
+    fftshift(fft(ζjet))
 end
 
 function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
-
-    B = zeros(ComplexF64,2*ny-1,nx)
-    return B
-
+    zeros(ComplexF64,2*ny-1,nx)
 end
 
 function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,νn::Float64)
-
     B = zeros(ComplexF64,2*ny-1,nx)
-
-    twopi::Float64 = 2.0*Float64(pi)
-
-    # hyperviscosity normalized to result in unity dissipation rate at kmax
     α::Int = 2
     kxmax::Float64 = 2.0*Float64(pi)/lx*Float64(nx-1)
     kymax::Float64 = 2.0*Float64(pi)/ly*Float64(ny-1)
-
     for m = 0:1:nx-1
         nmin = m == 0 ? 1 : -(ny-1)
         for n=nmin:1:ny-1
-
-            kx::Float64 = twopi*Float64(m)/lx
-            ky::Float64 = twopi*Float64(n)/ly
-
+            kx::Float64 = 2.0*Float64(pi)*Float64(m)/lx
+            ky::Float64 = 2.0*Float64(pi)*Float64(n)/ly
             B[n+ny,m+1] = - νn*((kx^2 + ky^2)/(kxmax^2 + kymax^2))^(2*α)
 
         end
     end
-
-    return B
-
+    B
 end
 
 function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,θ::Float64)
-
     B = zeros(ComplexF64,2*ny-1,nx)
-
     β::Float64 = 2.0*Ω*cos(θ)
-
     α::Int = 2
     kxmax::Float64 = 2.0*Float64(pi)/lx*Float64(nx-1)
     kymax::Float64 = 2.0*Float64(pi)/ly*Float64(ny-1)
-
     for m = 0:1:nx-1
         nmin = m == 0 ? 1 : -(ny-1)
         for n=nmin:1:ny-1
@@ -82,22 +50,15 @@ function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,θ::Float64
 
         end
     end
-
-    return B
-
+    B
 end
 
 function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,θ::Float64,νn::Float64)
-
     B = zeros(ComplexF64,2*ny-1,nx)
-
     β::Float64 = 2.0*Ω*cos(θ)
-
-    # hyperviscosity normalized to result in unity dissipation rate at kmax
     α::Int = 2
     kxmax::Float64 = 2.0*Float64(pi)/lx*Float64(nx-1)
     kymax::Float64 = 2.0*Float64(pi)/ly*Float64(ny-1)
-
     for m = 0:1:nx-1
         nmin = m == 0 ? 1 : -(ny-1)
         for n=nmin:1:ny-1
@@ -109,23 +70,16 @@ function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,θ::Float64
 
         end
     end
-
-    return B
-
+    B
 end
 
 function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,θ::Float64,νn::Float64,τ::Float64)
-
     B = zeros(ComplexF64,2*ny-1,nx)
-
-    κ::Float64 = τ == 0.0 ? 0.0 : 1.0/τ
+    γ::Float64 = τ == 0.0 ? 0.0 : 1.0/τ
     β::Float64 = 2.0*Ω*cos(θ)
-
-    # hyperviscosity normalized to result in unity dissipation rate at kmax
     α::Int = 2
     kxmax::Float64 = 2.0*Float64(pi)/lx*Float64(nx-1)
     kymax::Float64 = 2.0*Float64(pi)/ly*Float64(ny-1)
-
     for m = 0:1:nx-1
         nmin = m == 0 ? 1 : -(ny-1)
         for n=nmin:1:ny-1
@@ -133,13 +87,11 @@ function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,θ::Float64
             kx::Float64 = 2.0*Float64(pi)*Float64(m)/lx
             ky::Float64 = 2.0*Float64(pi)*Float64(n)/ly
 
-            B[n+ny,m+1] = - κ + im*β*kx/(kx^2 + ky^2) - νn*((kx^2 + ky^2)/(kxmax^2 + kymax^2))^(2*α)
+            B[n+ny,m+1] = - γ + im*β*kx/(kx^2 + ky^2) - νn*((kx^2 + ky^2)/(kxmax^2 + kymax^2))^(2*α)
 
         end
     end
-
-    return B
-
+    B
 end
 
 function ccoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
@@ -149,9 +101,6 @@ function ccoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
     Cp = zeros(Float64,2*ny-1,nx,2*ny-1,nx)
     Cm = zeros(Float64,2*ny-1,nx,2*ny-1,nx)
-
-    # Δp = []
-    # Δm = []
 
     # ++ interactions note: +0 has only (0,+n)
     for m1=1:1:M
@@ -171,10 +120,6 @@ function ccoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
                     else
                         Cp[n2+ny,m2+1,n1+ny,m1+1] = -(px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
                     end
-
-                    # m::Int = m1 + m2
-                    # n::Int = n1 + n2
-                    # push!(Δp,[m,n,m1,n1,m2,n2,Cp[n2+ny,m2+1,n1+ny,m1+1]])
 
                 end
             end
@@ -197,17 +142,11 @@ function ccoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
 
                     Cm[n2+ny,m2+1,n1+ny,m1+1] = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
 
-                    # m::Int = m1 - m2
-                    # n::Int = n1 - n2
-                    # push!(Δm,[m,n,m1,n1,-m2,-n2,Cm[n2+ny,m2+1,n1+ny,m1+1]])
-
                 end
             end
         end
     end
-
-    return Cp, Cm
-
+    Cp,Cm
 end
 
 function ccoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
@@ -217,9 +156,6 @@ function ccoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
 
     Cp = zeros(Float64,2*ny-1,nx,2*ny-1,nx)
     Cm = zeros(Float64,2*ny-1,nx,2*ny-1,nx)
-
-    # Δp = []
-    # Δm = []
 
     # L + L = L
     for m1=0:1:Λ
@@ -240,10 +176,6 @@ function ccoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
                     else
                         Cp[n2+ny,m2+1,n1+ny,m1+1] = -(px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
                     end
-
-                    # m::Int = m1 + m2
-                    # n::Int = n1 + n2
-                    # push!(Δp,[m,n,m1,n1,m2,n2,Cp[n2+ny,m2+1,n1+ny,m1+1]])
 
                 end
             end
@@ -269,10 +201,6 @@ function ccoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
 
                     Cm[n2+ny,m2+1,n1+ny,m1+1] = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
 
-                    # m::Int = m1 - m2
-                    # n::Int = n1 - n2
-                    # push!(Δm,[m,n,m1,n1,-m2,-n2,Cm[n2+ny,m2+1,n1+ny,m1+1]])
-
                 end
             end
         end
@@ -293,10 +221,6 @@ function ccoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
 
                     Cm[n2+ny,m2+1,n1+ny,m1+1] = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
 
-                    # m::Int = m1 - m2
-                    # n::Int = n1 - n2
-                    # push!(Δm,[m,n,m1,n1,-m2,-n2,Cm[n2+ny,m2+1,n1+ny,m1+1]])
-
                 end
             end
         end
@@ -316,10 +240,6 @@ function ccoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
                     qy::Float64 = 2.0*Float64(pi)/ly*Float64(n2)
 
                     Cp[n2+ny,m2+1,n1+ny,m1+1] = -(px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
-
-                    # m::Int = m1 + m2
-                    # n::Int = n1 + n2
-                    # push!(Δp,[m,n,m1,n1,m2,n2,Cp[n2+ny,m2+1,n1+ny,m1+1]])
 
                 end
             end
@@ -342,17 +262,9 @@ function ccoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
 
                     Cm[n2+ny,m2+1,n1+ny,m1+1] = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
 
-                    # m::Int = m1 - m2
-                    # n::Int = n1 - n2
-                    # push!(Δm,[m,n,m1,n1,-m2,-n2,Cm[n2+ny,m2+1,n1+ny,m1+1]])
-
                 end
             end
         end
     end
-
-    # @show Δp
-    # @show Δm
-    return Cp,Cm
-
+    Cp,Cm
 end

@@ -1,34 +1,23 @@
 function ic_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,A::Array{ComplexF64,1})
-
     ζ0 = zeros(ComplexF64,2*ny-1,nx)
-
     for y in 1:1:2*ny-1
         ζ0[y,1] = A[y]
     end
-
-    return ζ0
-
+    ζ0
 end
 
 function ic_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,Δθ::Float64)
-
     ζ0 = zeros(ComplexF64,2*ny-1,nx)
     ζjet = zeros(Float64,2*ny-1)
-
-    # jet vorticity is fraction of planetary vorticity
     Ξ::Float64 = 0.6*Ω
-
     for y in 1:1:2*ny-1
         ζjet[y] = -Ξ*tanh((ly/2.0 - 0.5*(2*y-1)/(2*ny-1)*ly)/Δθ)
     end
     ζjet_fourier = fftshift(fft(ζjet))
-
     for y in 1:1:2*ny-1
         ζ0[y,1] = ζjet_fourier[y]
     end
-
-    return ζ0
-
+    ζ0
 end
 
 # function ic_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,ν::Float64,τ::Float64)

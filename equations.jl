@@ -273,17 +273,17 @@ function gce2_eqs!(du,u,p,t)
     end
 
     # field bilinear equations
-    temp_li = fill!(similar(u.x[2]),0)
+    # temp_li = fill!(similar(u.x[2]),0)
     temp_nl = fill!(similar(u.x[2]),0)
 
     # linear terms: H
-    for m = Λ+1:1:M
-        for n=-N:1:N
-
-            temp_li[n+ny,m-Λ,n+ny,m-Λ] += B[n+ny,m+1]
-
-        end
-    end
+    # for m = Λ+1:1:M
+    #     for n=-N:1:N
+    #
+    #         temp_li[n+ny,m-Λ,n+ny,m-Λ] = B[n+ny,m+1]
+    #
+    #     end
+    # end
 
     # H + L = H
     # println("H+L = H")
@@ -322,6 +322,8 @@ function gce2_eqs!(du,u,p,t)
         end
     end
 
+    accumulator_li::ComplexF64 = 0.0 + 0.0im
+
     # H'*H
     # println("HH+")
     for m3=Λ+1:1:M
@@ -330,9 +332,9 @@ function gce2_eqs!(du,u,p,t)
                 for n=-N:1:N
 
                     accumulator_nl::ComplexF64 = 0.0 + 0.0im
-                    accumulator_li::ComplexF64 = 0.0 + 0.0im
 
-                    accumulator_li = temp_li[n+ny,m-Λ,n+ny,m-Λ]*u.x[2][n+ny,m-Λ,n3+ny,m3-Λ]
+                    # accumulator_li = temp_li[n+ny,m-Λ,n+ny,m-Λ]*u.x[2][n+ny,m-Λ,n3+ny,m3-Λ]
+                    accumulator_li = B[n+ny,m+1]*u.x[2][n+ny,m-Λ,n3+ny,m3-Λ]
 
                     # from H+L
                     for m1=max(Λ+1,m-Λ):1:min(M,m)
@@ -365,10 +367,10 @@ function gce2_eqs!(du,u,p,t)
 
     du.x[1] .= dζ
 
-    for m=Λ+1:1:M
-        for n=-N:1:N
-            for m3=Λ+1:1:M
-                for n3=-N:1:N
+    for m3=Λ+1:1:M
+        for n3=-N:1:N
+            for m=Λ+1:1:M
+                for n=-N:1:N
 
                     du.x[2][n+ny,m-Λ,n3+ny,m3-Λ] = dΘ[n+ny,m-Λ,n3+ny,m3-Λ] + conj(dΘ[n3+ny,m3-Λ,n+ny,m-Λ])
 

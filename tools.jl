@@ -157,9 +157,7 @@ function inversefourier(nx::Int,ny::Int,ufft::Array{Array{ComplexF64,2},1})
         end
 
     end
-
-    return uxy
-
+    uxy
 end
 
 function inversefourier(nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{Float64},Tuple{Array{Complex{Float64},2},Array{Complex{Float64},4}}},1})
@@ -191,9 +189,7 @@ function inversefourier(nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{
         end
 
     end
-
-    return uxy
-
+    uxy
 end
 
 function testfourier(nx::Int,ny::Int)

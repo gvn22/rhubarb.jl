@@ -133,7 +133,7 @@ function nl(lx::Float64,ly::Float64,nx::Int,ny::Int,T::Float64,Ω::Float64,θ::F
     p = [nx,ny,A,B,Cp,Cm]
     prob = ODEProblem(nl_eqs!,u0,tspan,p)
     # @time solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=10000,save_start=true,save_everystep=false,saveat=20)
-    @time solve(prob,RK4(),dt=0.001,adaptive=false,progress=true,progress_steps=10000,save_start=true,save_everystep=false,saveat=20)
+    @time solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=true,save_everystep=false,saveat=20)
 end
 
 ## GQL
@@ -273,7 +273,7 @@ function gql(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Floa
     p = [nx,ny,Λ,A,B,Cp,Cm]
     prob = ODEProblem(gql_eqs!,u0,tspan,p)
     # @time solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,dense=false,saveat=20)
-    @time solve(prob,RK4(),dt=0.001,adaptive=false,progress=true,progress_steps=10000,save_start=true,save_everystep=false,dense=false,saveat=20)
+    @time solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=true,save_everystep=false,dense=false,saveat=20)
 end
 
 ## GCE2
@@ -457,5 +457,5 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ω::Flo
     # cb = PresetTimeCallback(poschecktimes,affect!)
     # @time solve(prob,RK4(),callback=cb,tstops=poschecktimes,adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,dense=false,saveat=20)
     # @time solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=10000,save_start=true,save_everystep=false,dense=false,saveat=20)
-    @time solve(prob,RK4(),dt=0.0025,adaptive=false,progress=true,progress_steps=2000,save_start=true,save_everystep=false,dense=false,saveat=20)
+    @time solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=2000,save_start=true,save_everystep=false,dense=false,saveat=20)
 end

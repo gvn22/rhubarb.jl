@@ -1,108 +1,17 @@
-
 function ispositive(cumulant::Array{ComplexF64,4},nx::Int,ny::Int,Λ::Int)
-
-    twopoint = zeros(ComplexF64,(2*ny-1)*nx,(2*ny-1)*nx)
-
-    for m=Λ+1:1:nx-1
-        for n=-ny+1:1:ny-1
-            for m3=Λ+1:1:nx-1
-                for n3=-ny+1:1:ny-1
-
-                    twopoint[(n+ny)*(nx-1) + m-Λ,(n3+ny)*(nx-1) + m3-Λ] = cumulant[n+ny,m-Λ,n3+ny,m3-Λ]
-
-                end
-            end
-        end
-    end
-
-    @info "Second cumulant is positive definite = ", isposdef(twopoint)
-    return isposdef(twopoint)
-
+    twopoint = reshape(cumulant,(2*ny-1)*(nx-Λ),(2*ny-1)*(nx-Λ))
+    D = eigvals(twopoint)
+    !any(x->x<0,D)
 end
 
 function positivity!(cumulant::Array{ComplexF64,4},nx::Int,ny::Int,Λ::Int)
-
-    @info "Removing negative eignvalues from second cumulant..."
-    # println("Removing negative eignvalues from two-point correlation...")
-    twopoint = zeros(ComplexF64,(2*ny-1)*nx,(2*ny-1)*nx)
-
-    for m=Λ+1:1:nx-1
-        for n=-ny+1:1:ny-1
-            for m3=Λ+1:1:nx-1
-                for n3=-ny+1:1:ny-1
-
-                    twopoint[(n+ny)*(nx-1) + m-Λ,(n3+ny)*(nx-1) + m3-Λ] = cumulant[n+ny,m-Λ,n3+ny,m3-Λ]
-
-                end
-            end
-        end
-    end
-
-    D = eigvals(twopoint)
-    V = eigvecs(twopoint)
-    D_neg = [d for d in D]
-    D_pos = [d = real(d) < 0.0 ? 0.0 + imag(d)*im : real(d) + imag(d)*im for d in D]
-    # use mul!
-    twopoint = V*(D_pos.*V')
-
-    for m=Λ+1:1:nx-1
-        for n=-ny+1:1:ny-1
-            for m3=Λ+1:1:nx-1
-                for n3=-ny+1:1:ny-1
-
-                     cumulant[n+ny,m-Λ,n3+ny,m3-Λ] = twopoint[(n+ny)*(nx-1) + m-Λ,(n3+ny)*(nx-1) + m3-Λ]
-
-                end
-            end
-        end
-    end
-
-    @info "All eignvalues: ", D_neg
-
-end
-
-function positivity2!(cumulant::Array{ComplexF64,4},nx::Int,ny::Int,Λ::Int)
-
-    @info "Removing negative eignvalues from second cumulant..."
-    # println("Removing negative eignvalues from two-point correlation...")
-    twopoint = zeros(ComplexF64,(2*ny-1)*nx,(2*ny-1)*nx)
-
-    for m=Λ+1:1:nx-1
-        for n=-ny+1:1:ny-1
-            for m3=Λ+1:1:nx-1
-                for n3=-ny+1:1:ny-1
-
-                    twopoint[(n+ny)*(nx-1) + m-Λ,(n3+ny)*(nx-1) + m3-Λ] = cumulant[n+ny,m-Λ,n3+ny,m3-Λ]
-
-                end
-            end
-        end
-    end
-
-    P, _ = prox(IndPSD(), twopoint)
-
-    # D = eigvals(twopoint)
-    # V = eigvecs(twopoint)
-    # D_neg = [d for d in D]
-    # D_pos = [d = real(d) < 0.0 ? 0.0 + imag(d)*im : real(d) + imag(d)*im for d in D]
-    # # use mul!
-    # twopoint = V*(D_pos.*V')
-
-    for m=Λ+1:1:nx-1
-        for n=-ny+1:1:ny-1
-            for m3=Λ+1:1:nx-1
-                for n3=-ny+1:1:ny-1
-
-                     cumulant[n+ny,m-Λ,n3+ny,m3-Λ] = P[(n+ny)*(nx-1) + m-Λ,(n3+ny)*(nx-1) + m3-Λ]
-
-                end
-            end
-        end
-    end
-
-    # @info "All eignvalues: ", twopoint
-    @info "All eignvalues: ", P
-
+    twopoint = Hermitian(reshape(cumulant,(2*ny-1)*(nx-Λ),(2*ny-1)*(nx-Λ)))
+    D,V = eigen(twopoint)
+    @info "Removing following eignvalues from second cumulant ",D[issless(D,0)]
+    Dpos = max.(D,0.0)
+    twopoint = V*diagm(Dpos)*inv(V)
+    # mul!(twopoint,V,lmul!(diagm(Dpos),inv(V)))
+    cumulant = reshape(twopoint,2*ny-1,nx-Λ,2*ny-1,nx-Λ)
 end
 
 function inversefourier(nx::Int,ny::Int,uff::Array{ComplexF64,2})
@@ -190,30 +99,4 @@ function inversefourier(nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{
 
     end
     uxy
-end
-
-function testfourier(nx::Int,ny::Int)
-
-    u0xy = rand(Float64,2*ny-1,2*nx-1)
-    uff = fftshift(fft(u0xy))
-
-    umn = zeros(ComplexF64,2*ny-1,2*nx-1)
-    uxy = zeros(Float64,2*ny-1,2*nx-1)
-    uxy2 = zeros(Float64,2*ny-1,2*nx-1)
-
-    for m1 = 0:1:nx-1
-        n1min = m1 == 0 ? 1 : -ny + 1
-        for n1 = n1min:1:ny-1
-
-            umn[n1 + ny,m1+nx] = uff[n1+ny,m1+nx]
-            umn[-n1 + ny,-m1+nx] = conj(uff[n1+ny,m1+nx])
-
-        end
-    end
-
-    uxy .= real(ifft(ifftshift(umn)))
-    uxy2 .= real(ifft(ifftshift(uff)))
-
-    return u0xy,uxy,uxy2
-
 end

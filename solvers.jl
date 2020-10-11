@@ -6,6 +6,7 @@ function nl(lx::Float64,ly::Float64,nx::Int,ny::Int,Ξ::Float64,β::Float64,τ::
     p = [nx,ny,A,B,Cp,Cm]
     tspan = (0.0,t_end)
     prob = ODEProblem(nl_eqs!,ic,tspan,p)
+    @info "Solving NL equations..."
     solve(prob,RK4(),dt=dt,adaptive=false,progress=true,progress_steps=10000,save_start=true,save_everystep=false,saveat=20)
 end
 
@@ -17,6 +18,7 @@ function gql(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Flo
     p = [nx,ny,Λ,A,B,Cp,Cm]
     tspan = (0.0,t_end)
     prob = ODEProblem(gql_eqs!,ic,tspan,p)
+    @info "Solving GQL equations with Λ = ", Λ
     solve(prob,RK4(),dt=dt,adaptive=false,progress=true,progress_steps=10000,save_start=true,save_everystep=false,saveat=20)
 end
 
@@ -26,6 +28,7 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Fl
     B = bcoeffs(lx,ly,nx,ny,β,τ,νn)
     Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
     p = [nx,ny,Λ,A,B,Cp,Cm]
+    @info "Solving GCE2 equations with Λ = ", Λ
     tspan = (0.0,t_end)
     u0 = ic_cumulants(nx,ny,Λ,ic)
     prob = ODEProblem(gce2_eqs!,u0,tspan,p)

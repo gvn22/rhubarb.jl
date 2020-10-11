@@ -13,7 +13,8 @@ include("tools.jl")
 include("solvers.jl")
 include("analysis.jl")
 
-## Solve
+""" Set parameters and solve
+"""
 lx = 4.0*Float64(pi);
 ly = 2.0*Float64(pi);
 nx = 4;
@@ -24,15 +25,18 @@ ny = 4;
 β = 2.0*Ω*cos(θ)
 Ξ = 0.6*Ω
 τ = 10.0/Ω
-Λ = 0
+Λ = 1
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
 sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=500.0);
 sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,t_end=500.0);
-sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=500.0,poscheck=true);
+sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=500.0,poscheck=false);
 
+""" Create plots
+"""
 plotlyjs();
+# pyplot();
 
 ## Zonal energy
 zones = reshape(["$i" for i = 0:1:nx-1],1,nx);

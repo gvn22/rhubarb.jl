@@ -42,21 +42,3 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Fl
         solve(prob,RK4(),dt=dt,adaptive=false,progress=true,progress_steps=10000,save_start=true,save_everystep=false,saveat=20)
     end
 end
-
-# function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,T::Float64,Ξ::Float64,β::Float64,τ::Float64,u0f::Array{ComplexF64,2})
-#     tspan = (0.0,T)
-#     u0 = ic_cumulants(nx,ny,Λ,u0f)
-#     A = acoeffs(ly,ny,Ξ,τ)
-#     B = bcoeffs(lx,ly,nx,ny,β,τ)
-#     Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
-#     p = [nx,ny,Λ,A,B,Cp,Cm]
-#     prob = ODEProblem(gce2_eqs!,u0,tspan,p)
-#     # poschecktimes = range(1.0,T,step=40.0)
-#     # condition(u,t,integrator) = t ∈ poschecktimes && !ispositive(u.x[2],nx,ny,Λ)
-#     # affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
-#     # cb = PresetTimeCallback(poschecktimes,affect!,save_positions=(false,false))
-#     # @time solve(prob,RK4(),callback=cb,tstops=poschecktimes,adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,dense=false,saveat=20)
-#     # @time solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=10000,save_start=true,save_everystep=false,dense=false,saveat=20)
-#     # @time solve(prob,RK4(),callback=cb,tstops=poschecktimes,dt=0.001,adaptive=false,progress=true,progress_steps=2000,save_start=true,save_everystep=false,dense=false,saveat=40)
-#     @time solve(prob,RK4(),dt=0.001,adaptive=false,progress=true,progress_steps=2000,save_start=true,save_everystep=false,dense=false,saveat=40)
-# end

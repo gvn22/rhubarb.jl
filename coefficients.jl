@@ -1,10 +1,6 @@
-function acoeffs(ly::Float64,ny::Int)
-    zeros(ComplexF64,2*ny-1)
-end
-
-function acoeffs(ly::Float64,ny::Int,Ω::Float64,Δθ::Float64,τ::Float64)
+function acoeffs(ly::Float64,ny::Int,Ξ::Float64,τ::Float64=0.0)
     ζjet = zeros(Float64,2*ny-1)
-    Ξ::Float64 = 0.6*Ω
+    Δθ::Float64 = 0.05
     κ::Float64 = τ == 0.0 ? 0.0 : 1.0/τ
     for y in 1:1:2*ny-1
         ζjet[y] = -κ*Ξ*tanh((ly/2.0 - 0.5*(2*y-1)/(2*ny-1)*ly)/Δθ)
@@ -12,83 +8,18 @@ function acoeffs(ly::Float64,ny::Int,Ω::Float64,Δθ::Float64,τ::Float64)
     fftshift(fft(ζjet))
 end
 
-function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
-    zeros(ComplexF64,2*ny-1,nx)
-end
-
-function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,νn::Float64)
+function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,β::Float64,τ::Float64=0.0,νn::Float64=0.0)
     B = zeros(ComplexF64,2*ny-1,nx)
     α::Int = 2
     kxmax::Float64 = 2.0*Float64(pi)/lx*Float64(nx-1)
     kymax::Float64 = 2.0*Float64(pi)/ly*Float64(ny-1)
-    for m = 0:1:nx-1
-        nmin = m == 0 ? 1 : -(ny-1)
-        for n=nmin:1:ny-1
-            kx::Float64 = 2.0*Float64(pi)*Float64(m)/lx
-            ky::Float64 = 2.0*Float64(pi)*Float64(n)/ly
-            B[n+ny,m+1] = - νn*((kx^2 + ky^2)/(kxmax^2 + kymax^2))^(2*α)
-
-        end
-    end
-    B
-end
-
-function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,θ::Float64)
-    B = zeros(ComplexF64,2*ny-1,nx)
-    β::Float64 = 2.0*Ω*cos(θ)
-    α::Int = 2
-    kxmax::Float64 = 2.0*Float64(pi)/lx*Float64(nx-1)
-    kymax::Float64 = 2.0*Float64(pi)/ly*Float64(ny-1)
-    for m = 0:1:nx-1
-        nmin = m == 0 ? 1 : -(ny-1)
-        for n=nmin:1:ny-1
-
-            kx::Float64 = 2.0*Float64(pi)*Float64(m)/lx
-            ky::Float64 = 2.0*Float64(pi)*Float64(n)/ly
-
-            B[n+ny,m+1] = im*β*kx/(kx^2 + ky^2)
-
-        end
-    end
-    B
-end
-
-function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,θ::Float64,νn::Float64)
-    B = zeros(ComplexF64,2*ny-1,nx)
-    β::Float64 = 2.0*Ω*cos(θ)
-    α::Int = 2
-    kxmax::Float64 = 2.0*Float64(pi)/lx*Float64(nx-1)
-    kymax::Float64 = 2.0*Float64(pi)/ly*Float64(ny-1)
-    for m = 0:1:nx-1
-        nmin = m == 0 ? 1 : -(ny-1)
-        for n=nmin:1:ny-1
-
-            kx::Float64 = 2.0*Float64(pi)*Float64(m)/lx
-            ky::Float64 = 2.0*Float64(pi)*Float64(n)/ly
-
-            B[n+ny,m+1] = im*β*kx/(kx^2 + ky^2) - νn*((kx^2 + ky^2)/(kxmax^2 + kymax^2))^(2*α)
-
-        end
-    end
-    B
-end
-
-function bcoeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,θ::Float64,νn::Float64,τ::Float64)
-    B = zeros(ComplexF64,2*ny-1,nx)
     γ::Float64 = τ == 0.0 ? 0.0 : 1.0/τ
-    β::Float64 = 2.0*Ω*cos(θ)
-    α::Int = 2
-    kxmax::Float64 = 2.0*Float64(pi)/lx*Float64(nx-1)
-    kymax::Float64 = 2.0*Float64(pi)/ly*Float64(ny-1)
     for m = 0:1:nx-1
         nmin = m == 0 ? 1 : -(ny-1)
         for n=nmin:1:ny-1
-
             kx::Float64 = 2.0*Float64(pi)*Float64(m)/lx
             ky::Float64 = 2.0*Float64(pi)*Float64(n)/ly
-
-            B[n+ny,m+1] = - γ + im*β*kx/(kx^2 + ky^2) - νn*((kx^2 + ky^2)/(kxmax^2 + kymax^2))^(2*α)
-
+            B[n+ny,m+1] = -γ + im*β*kx/(kx^2 + ky^2) - νn*((kx^2 + ky^2)/(kxmax^2 + kymax^2))^(2*α)
         end
     end
     B

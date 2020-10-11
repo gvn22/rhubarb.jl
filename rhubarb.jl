@@ -24,13 +24,13 @@ ny = 4;
 β = 2.0*Ω*cos(θ)
 Ξ = 0.6*Ω
 τ = 10.0/Ω
-Λ = 3
+Λ = 0
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
 sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=500.0);
 sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,t_end=500.0);
-sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,t_end=500.0);
+sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=500.0,poscheck=true);
 
 plotlyjs();
 

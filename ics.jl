@@ -1,59 +1,24 @@
-function ic_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,A::Array{ComplexF64,1})
+function ic_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,Ξ::Float64)
     ζ0 = zeros(ComplexF64,2*ny-1,nx)
+    ζjet = acoeffs(ly,ny,Ξ,1.0)
     for y in 1:1:2*ny-1
-        ζ0[y,1] = A[y]
+        ζ0[y,1] = ζjet[y]
     end
     ζ0
 end
-
-function ic_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,Δθ::Float64)
-    ζ0 = zeros(ComplexF64,2*ny-1,nx)
-    ζjet = zeros(Float64,2*ny-1)
-    Ξ::Float64 = 0.6*Ω
-    for y in 1:1:2*ny-1
-        ζjet[y] = -Ξ*tanh((ly/2.0 - 0.5*(2*y-1)/(2*ny-1)*ly)/Δθ)
-    end
-    ζjet_fourier = fftshift(fft(ζjet))
-    for y in 1:1:2*ny-1
-        ζ0[y,1] = ζjet_fourier[y]
-    end
-    ζ0
-end
-
-# function ic_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,Ω::Float64,ν::Float64,τ::Float64)
-#
-#     Ξ = 0.6*Ω
-#     Δθ = 0.05
-#     θ = Float64(pi)/6.0
-#     β = 2.0*Ω*cos(θ)
-#
-#     ujet = c_coeffs(lx,ly,nx,ny,Ξ,Δθ)
-#     ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
-#
-#     ζ0 = zeros(ComplexF64,2*ny-1,nx)
-#     for n=1:1:ny-1
-#
-#         ζ0[n+ny,1] = -(ujet[n+ny,1]/τ)/(im*ω[n+ny,1] + v[n+ny,1])
-#
-#     end
-#
-#     return ζ0
-# end
 
 function ic_rand(lx::Float64,ly::Float64,nx::Int,ny::Int)
-
-    umn = zeros(ComplexF64,2*ny-1,2*nx-1)
-
     uxy = randn(Float64,2*ny-1,2*nx-1)
     umn = fftshift(fft(uxy))
-    umn[ny,nx] = 0.0 + im*0.0
+    umn[ny,nx] = 0.0 + 0.0im
+    umn[:,nx:2*nx-1]
+end
 
-    return umn[:,nx:2*nx-1]
-
+function ic_pert_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,Ξ::Float64)
+    @. ic_eqm(lx,ly,nx,ny,Ξ) + ic_rand(lx,ly,nx,ny)/10.0
 end
 
 function ic_cumulants(nx::Int,ny::Int,Λ::Int,u0::Array{ComplexF64,2})
-
     u0_low::Array{ComplexF64,2} = u0[:,1:Λ+1]
     for n = 1:1:ny-1
         u0_low[n,1] = conj(u0_low[2*ny - n,1])
@@ -73,7 +38,5 @@ function ic_cumulants(nx::Int,ny::Int,Λ::Int,u0::Array{ComplexF64,2})
             end
         end
     end
-
-    return ArrayPartition(u0_low,u0_high)
-
+    ArrayPartition(u0_low,u0_high)
 end

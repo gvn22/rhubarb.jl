@@ -1,4 +1,4 @@
-# energy for NL/GQL
+## Energy for NL/GQL
 function energy(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF64,2},1})
 
     E = zeros(Float64,length(u))
@@ -62,7 +62,8 @@ function energy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{ArrayPa
 
 end
 
-function modalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF64,2},1})
+## modal strength
+function modalstrength(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF64,2},1})
 
     E = zeros(Float64,length(u),(2*ny-1)*nx)
 
@@ -86,7 +87,7 @@ function modalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{Comp
 
 end
 
-function modalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{Float64},Tuple{Array{Complex{Float64},2},Array{Complex{Float64},4}}},1})
+function modalstrength(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{Float64},Tuple{Array{Complex{Float64},2},Array{Complex{Float64},4}}},1})
 
     E = zeros(Float64,length(u),(2*ny-1)*nx)
 
@@ -122,7 +123,8 @@ function modalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{Ar
 
 end
 
-function zonalpower(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF64,2},1})
+## zonal energy
+function zonalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF64,2},1})
 
     P = zeros(Float64,length(u),nx)
     O = fill!(similar(P),0)
@@ -148,7 +150,7 @@ function zonalpower(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{Compl
 
 end
 
-function zonalpower(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{Float64},Tuple{Array{Complex{Float64},2},Array{Complex{Float64},4}}},1})
+function zonalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{Float64},Tuple{Array{Complex{Float64},2},Array{Complex{Float64},4}}},1})
 
     P = zeros(Float64,length(u),nx)
     O = fill!(similar(P),0)
@@ -187,7 +189,7 @@ function zonalpower(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{Arr
 
 end
 
-# mean vorticity NL/GQL
+## mean vorticity NL/GQL
 function meanvorticity(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF64,2},1})
 
     ζf = zeros(ComplexF64,length(u),2*ny-1)

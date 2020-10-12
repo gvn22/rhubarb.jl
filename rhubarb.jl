@@ -3,7 +3,7 @@ using DiffEqCallbacks
 using RecursiveArrayTools
 using FFTW
 using LinearAlgebra
-using Plots: plot,plot!,plotlyjs,savefig
+using Plots: plot,plot!,plotlyjs,pyplot,savefig
 # ENV["JULIA_DEBUG"] = Main
 
 include("coefficients.jl")
@@ -17,36 +17,38 @@ include("analysis.jl")
 """
 lx = 4.0*Float64(pi);
 ly = 2.0*Float64(pi);
-nx = 4;
-ny = 4;
+nx = 8;
+ny = 10;
 
 Ω = 2.0*Float64(pi)
-θ = 0.0
+θ = Float64(pi)/3.0
 β = 2.0*Ω*cos(θ)
-Ξ = 0.6*Ω
+Ξ = 0.1*Ω
 τ = 10.0/Ω
-Λ = 1
+Λ = 0
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
 sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=500.0);
-sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,t_end=500.0);
+sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,t_end=200.0);
 sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=500.0,poscheck=false);
 
 """ Create plots
 """
-plotlyjs();
-# pyplot();
+# plotlyjs();
+pyplot();
+dn = "tests/8x10/l60j0_1t10/"
+mkpath(dn)
 
 ## Zonal energy
 zones = reshape(["$i" for i = 0:1:nx-1],1,nx);
 
 P1,O1 = zonalenergy(lx,ly,nx,ny,sol1.u);
-_p = plot(sol1.t,P1,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode"),labels=zones,legend=:right,linewidth=2)
+_p = plot(sol1.t,P1,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-9,1e3)),labels=zones,legend=:right,linewidth=2)
 savefig(_p,dn*"NL_em_t.png");
 
 P2,O2 = zonalenergy(lx,ly,nx,ny,sol2.u);
-_p = plot(sol2.t,P2,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-2,1e3)),labels=zones,legend=:right,linewidth=2)
+_p = plot(sol2.t,P2,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-9,1e3)),labels=zones,legend=:right,linewidth=2)
 savefig(_p,dn*"GQL_"*"$Λ"*"_em_t.png")
 
 P3,O3 = zonalenergy(lx,ly,nx,ny,Λ,sol3.u);

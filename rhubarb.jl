@@ -17,58 +17,43 @@ include("analysis.jl")
 """
 lx = 4.0*Float64(pi);
 ly = 2.0*Float64(pi);
-nx = 8;
-ny = 10;
+nx = 7;
+ny = 11;
 
 Ω = 2.0*Float64(pi)
-θ = Float64(pi)/3.0
+θ = Float64(pi)/6.0
 β = 2.0*Ω*cos(θ)
-Ξ = 0.1*Ω
+Ξ = 0.2*Ω
 τ = 10.0/Ω
-Λ = 0
+Λ = 7
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
 sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=500.0);
 sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,t_end=200.0);
-sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=500.0,poscheck=false);
+sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.005,t_end=200.0,poscheck=false);
 
 """ Create plots
 """
 # plotlyjs();
 pyplot();
-dn = "tests/8x10/l60j0_1t10/"
+dn = "tests/8x10/l60j0_2t10/"
 mkpath(dn)
 
 ## Zonal energy
 zones = reshape(["$i" for i = 0:1:nx-1],1,nx);
 
 P1,O1 = zonalenergy(lx,ly,nx,ny,sol1.u);
-_p = plot(sol1.t,P1,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-9,1e3)),labels=zones,legend=:right,linewidth=2)
-savefig(_p,dn*"NL_em_t.png");
+_p = plot(sol1.t,P1,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-9,1e3)),labels=zones,palette=:tab10,legend=:best,linewidth=2)
+savefig(_p,dn*"NL_em.png");
 
 P2,O2 = zonalenergy(lx,ly,nx,ny,sol2.u);
-_p = plot(sol2.t,P2,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-9,1e3)),labels=zones,legend=:right,linewidth=2)
-savefig(_p,dn*"GQL_"*"$Λ"*"_em_t.png")
+_p = plot(sol2.t,P2,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-9,1e3)),labels=zones,palette=:tab10,legend=:best,linewidth=2)
+savefig(_p,dn*"GQL_"*"$Λ"*"_em.png")
 
 P3,O3 = zonalenergy(lx,ly,nx,ny,Λ,sol3.u);
-_p = plot(sol3.t,P3,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-2,1e3)),labels=zones,legend=:right,linewidth=2)
-savefig(_p,dn*"GCE2_"*"$Λ"*"_dt01.png");
-
-## Modal strength
-modes = reshape(["($j,$i)" for j=0:1:nx-1 for i=-(ny-1):1:ny-1],1,nx*(2*ny-1));
-
-M1 = modalstrength(lx,ly,nx,ny,sol1.u);
-_m = plot(sol1.t,M1,labels=modes,legend=:outerright,linewidth=2,xaxis=("Time"),yaxis="Mode Strength")
-savefig(_m,dn*"NL_m_t.png");
-
-M2 = modalstrength(lx,ly,nx,ny,sol2.u);
-_m = plot(sol2.t,M2,labels=modes,legend=:outerright,linewidth=2,xaxis=("Time"),yaxis="Mode Strength")
-savefig(_m,dn*"GQL_"*"$Λ"*"_m_t.png");
-
-M3 = modalstrength(lx,ly,nx,ny,Λ,sol3.u);
-_m = plot(sol3.t,M3,labels=modes,linewidth=2,xaxis=("Time"),yaxis="Mode Strength")
-savefig(_m,dn*"GCE2_"*"$Λ"*"_m_t.png")
+_p = plot(sol3.t,P3,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-9,1e3)),labels=zones,palette=:tab10,legend=:best,linewidth=2)
+savefig(_p,dn*"GCE2_"*"$Λ"*"_em.png");
 
 ## Spatial vorticity
 xx = LinRange(-lx/2,lx/2,2*nx-1);
@@ -100,11 +85,11 @@ _a = plot(sol1.t,angles,A1',xaxis="t",st=:contourf,color=:bwr,yaxis="<ζ>",label
 savefig(_a,dn*"NL_a_t.png")
 
 A2 = meanvorticity(lx,ly,nx,ny,sol2.u)
-_a = plot(sol2.t,angles,A2',xaxis="t",st=:contourf,color=:bwr,yaxis="<ζ>",label="GQL(0)")
+_a = plot(sol2.t,angles,A2',xaxis="t",st=:contourf,color=:bwr,yaxis="<ζ>",label="GQL($Λ)")
 savefig(_a,dn*"GQL_"*"$Λ"*"_a_t.png")
 
 A3 = meanvorticity(lx,ly,nx,ny,Λ,sol3.u)
-_a = plot(sol3.t,angles,A3',xaxis="t",st=:contourf,color=:bwr,yaxis="<ζ>",label="GCE2(0)")
+_a = plot(sol3.t,angles,A3',xaxis="t",st=:contourf,color=:bwr,yaxis="<ζ>",label="GCE2($Λ)")
 savefig(_a,dn*"GCE2_"*"$Λ"*"_a_t.png")
 
 ## Mean vorticity: t_end
@@ -112,12 +97,9 @@ Ajet = real.(ifft(ifftshift(ic_eqm(lx,ly,nx,ny,Ξ)[:,1])))
 
 plot(angles,Ajet,xaxis="θ",yaxis="<ζ>",color=:black,linewidth=2,label="Jet")
 plot!(angles,A1[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
-plot!(angles,A2[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GQL(1)")
-plot!(angles,A3[end,:],legend=:bottomright,xaxis="θ",yaxis="<ζ>",linewidth=2,label="GCE2(1)")
-
-plot!(angles,A1[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
-plot!(angles,A2[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GQL(1)")
-plot!(angles,A3[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GCE2(1)")
+plot!(angles,A2[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GQL($Λ)")
+_zt = plot!(angles,A3[end,:],legend=:bottomright,xaxis="θ",yaxis="<ζ>",linewidth=2,label="GCE2($Λ)")
+savefig(_zt,dn*"zt_"*"$Λ"*".png")
 
 ## Energy & enstropy
 
@@ -135,5 +117,20 @@ plot!(angles,A3[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GCE2(1)")
 # _ez = plot(sol3.t,E3,linewidth=2,label="E");
 # _ez = plot!(sol3.t,Z3,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",xaxis="Time",label="Z")
 # savefig(_ez,dn*"GCE2_"*"$Λ"*"_ez_t.png")
+
+## Modal strength
+# modes = reshape(["($j,$i)" for j=0:1:nx-1 for i=-(ny-1):1:ny-1],1,nx*(2*ny-1));
+#
+# M1 = modalstrength(lx,ly,nx,ny,sol1.u);
+# _m = plot(sol1.t,M1,labels=modes,legend=:outerright,linewidth=2,xaxis=("Time"),yaxis="Mode Strength")
+# savefig(_m,dn*"NL_m_t.png");
+#
+# M2 = modalstrength(lx,ly,nx,ny,sol2.u);
+# _m = plot(sol2.t,M2,labels=modes,legend=:outerright,linewidth=2,xaxis=("Time"),yaxis="Mode Strength")
+# savefig(_m,dn*"GQL_"*"$Λ"*"_m_t.png");
+#
+# M3 = modalstrength(lx,ly,nx,ny,Λ,sol3.u);
+# _m = plot(sol3.t,M3,labels=modes,linewidth=2,xaxis=("Time"),yaxis="Mode Strength")
+# savefig(_m,dn*"GCE2_"*"$Λ"*"_m_t.png")
 
 ## tests

@@ -6,7 +6,7 @@ function nl(lx::Float64,ly::Float64,nx::Int,ny::Int,Ξ::Float64,β::Float64,τ::
     p = [nx,ny,A,B,Cp,Cm]
     tspan = (0.0,t_end)
     prob = ODEProblem(nl_eqs!,ic,tspan,p)
-    @info "Solving NL equations..."
+    @info "Solving NL equations on $(nx-1)x$(ny-1) grid"
     solve(prob,RK4(),dt=dt,adaptive=false,progress=true,progress_steps=10000,save_start=true,save_everystep=false,saveat=20)
 end
 
@@ -18,7 +18,7 @@ function gql(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Flo
     p = [nx,ny,Λ,A,B,Cp,Cm]
     tspan = (0.0,t_end)
     prob = ODEProblem(gql_eqs!,ic,tspan,p)
-    @info "Solving GQL equations with Λ = ", Λ
+    @info "Solving GQL equations on $(nx-1)x$(ny-1) grid with Λ = $Λ"
     solve(prob,RK4(),dt=dt,adaptive=false,progress=true,progress_steps=10000,save_start=true,save_everystep=false,saveat=20)
 end
 
@@ -28,7 +28,7 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Fl
     B = bcoeffs(lx,ly,nx,ny,β,τ,νn)
     Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
     p = [nx,ny,Λ,A,B,Cp,Cm]
-    @info "Solving GCE2 equations with Λ = ", Λ
+    @info "Solving GCE2 equations on $(nx-1)x$(ny-1) grid with Λ = $Λ"
     tspan = (0.0,t_end)
     u0 = ic_cumulants(nx,ny,Λ,ic)
     prob = ODEProblem(gce2_eqs!,u0,tspan,p)
@@ -37,8 +37,8 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Fl
         condition(u,t,integrator) = t ∈ poschecktimes && !ispositive(u.x[2],nx,ny,Λ)
         affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
         cb = DiscreteCallback(condition,affect!,save_positions=(false,false))
-        solve(prob,RK4(),callback=cb,tstops=poschecktimes,dt=dt,adaptive=false,progress=true,progress_steps=2000,save_start=true,save_everystep=false,dense=false,saveat=40)
+        solve(prob,RK4(),callback=cb,tstops=poschecktimes,dt=dt,adaptive=false,progress=true,progress_steps=2000,save_start=true,save_everystep=false,dense=false,saveat=20)
     else
-        solve(prob,RK4(),dt=dt,adaptive=false,progress=true,progress_steps=10000,save_start=true,save_everystep=false,saveat=20)
+        solve(prob,RK4(),dt=dt,adaptive=false,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=20)
     end
 end

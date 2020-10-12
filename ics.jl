@@ -15,7 +15,7 @@ function ic_rand(lx::Float64,ly::Float64,nx::Int,ny::Int)
 end
 
 function ic_pert_eqm(lx::Float64,ly::Float64,nx::Int,ny::Int,Ξ::Float64)
-    @. ic_eqm(lx,ly,nx,ny,Ξ) + ic_rand(lx,ly,nx,ny)/1000.0
+    @. ic_eqm(lx,ly,nx,ny,Ξ) + ic_rand(lx,ly,nx,ny)*1e-4
 end
 
 function ic_cumulants(nx::Int,ny::Int,Λ::Int,u0::Array{ComplexF64,2})

@@ -1,14 +1,36 @@
 ## Energy for NL/GQL
-function energy(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF64,2},1})
-
-    E = zeros(Float64,length(u))
-    Z = fill!(similar(E),0)
-
+function e_lohi(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{Array{ComplexF64,2},1})
+    e_lo = zeros(Float64,length(u))
+    e_hi = fill!(similar(e_lo),0)
     for i in eachindex(u)
-
-        for m1 = 0:1:nx-1
+        for m1 = 0:1:Λ
             n1min = m1 == 0 ? 1 : -(ny-1)
             for n1 = n1min:1:ny-1
+
+                kx = 2.0*Float64(pi)/lx*m1
+                ky = 2.0*Float64(pi)/ly*n1
+                e_lo[i] += abs(u[i][n1 + ny,m1 + 1])^2/(kx^2 + ky^2)
+            end
+        end
+        for m1 = Λ+1:1:nx-1
+            for n1 = -(ny-1):1:ny-1
+                kx = 2.0*Float64(pi)/lx*m1
+                ky = 2.0*Float64(pi)/ly*n1
+                e_hi[i] += abs(u[i][n1 + ny,m1 + 1])^2/(kx^2 + ky^2)
+            end
+        end
+    end
+    e_lo,e_hi
+end
+
+function energy(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF64,2},1})
+    E = zeros(Float64,length(u))
+    Z = fill!(similar(E),0)
+    for i in eachindex(u)
+
+        for m1 = 0:nx-1
+            n1min = m1 == 0 ? 1 : -(ny-1)
+            for n1 = n1min:ny-1
 
                 kx = 2.0*Float64(pi)/lx*m1
                 ky = 2.0*Float64(pi)/ly*n1
@@ -19,9 +41,7 @@ function energy(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF6
             end
         end
     end
-
-    return E,Z
-
+    E,Z
 end
 
 # energy for GCE2

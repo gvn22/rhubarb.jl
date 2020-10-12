@@ -21,15 +21,15 @@ nx = 7;
 ny = 11;
 
 Ω = 2.0*Float64(pi)
-θ = Float64(pi)/6.0
-β = 2.0*Ω*cos(θ)
-Ξ = 0.2*Ω
-τ = 10.0/Ω
-Λ = 7
+θ = Float64(pi)/3.0
+β = 2.0*Ω*sin(θ)
+Ξ = 0.4*Ω
+τ = 20.0/Ω
+Λ = 0
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
-sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=500.0);
+sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.005,t_end=200.0,savefreq=5);
 sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,t_end=200.0);
 sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.005,t_end=200.0,poscheck=false);
 
@@ -102,6 +102,15 @@ _zt = plot!(angles,A3[end,:],legend=:bottomright,xaxis="θ",yaxis="<ζ>",linewid
 savefig(_zt,dn*"zt_"*"$Λ"*".png")
 
 ## Energy & enstropy
+e_zon,e_turb = e_lohi(lx,ly,nx,ny,Λ,sol1.u)
+_ezt = plot(sol1.t,e_zon,linewidth=2,label="Zonal");
+_ezt = plot!(sol1.t,e_turb,linewidth=2,legend=:best,yaxis="Energy",xaxis="Time",label="Turbulence")
+plot(e_zon,e_turb)
+
+e_zon,e_turb = e_lohi(lx,ly,nx,ny,Λ,sol2.u)
+_ezt = plot(sol2.t,e_zon,linewidth=2,label="Zonal");
+_ezt = plot!(sol2.t,e_turb,linewidth=2,legend=:best,yaxis="Energy",xaxis="Time",label="Turbulence")
+plot(e_zon,e_turb)
 
 # E1,Z1 = energy(lx,ly,nx,ny,sol1.u);
 # _ez = plot(sol1.t,E1,linewidth=2,label="E");

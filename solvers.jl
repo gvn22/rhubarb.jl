@@ -6,7 +6,7 @@ function nl(lx::Float64,ly::Float64,nx::Int,ny::Int,Ξ::Float64,β::Float64,τ::
     Cp,Cm = ccoeffs(lx,ly,nx,ny)
     p = [nx,ny,A,B,Cp,Cm]
     tspan = (0.0,t_end)
-    prob = ODEProblem(nl_eqs2!,ic,tspan,p)
+    prob = ODEProblem(nl_eqs3!,ic,tspan,p)
     @info "Solving NL equations on $(nx-1)x$(ny-1) grid"
     solve(prob,RK4(),dt=dt,adaptive=false,progress=true,progress_steps=10000,save_start=true,saveat=savefreq,save_everystep=savefreq==1 ? true : false)
 end
@@ -19,7 +19,7 @@ function gql(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Flo
     Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
     p = [nx,ny,Λ,A,B,Cp,Cm]
     tspan = (0.0,t_end)
-    prob = ODEProblem(gql_eqs!,ic,tspan,p)
+    prob = ODEProblem(gql_eqs2!,ic,tspan,p)
     @info "Solving GQL equations on $(nx-1)x$(ny-1) grid with Λ = $Λ"
     solve(prob,RK4(),dt=dt,adaptive=false,progress=true,progress_steps=10000,save_start=true,save_everystep=false,dense=false,saveat=savefreq)
 end

@@ -26,7 +26,7 @@ ny = 10;
 β = 2.0*Ω*cos(θ)
 Ξ = 0.2*Ω
 τ = 10.0/Ω
-Λ = 0
+Λ = 7
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
@@ -49,11 +49,11 @@ _p = plot(sol1.t,P1,xaxis=("Time",(-1,51)),yscale=:log10,yaxis=("Energy in Zonal
 savefig(_p,dn*"NL_em.png");
 
 P2,O2 = zonalenergy(lx,ly,nx,ny,sol2.u);
-_p = plot(sol2.t,P2,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-9,1e3)),labels=zones,palette=:tab10,legend=:best,linewidth=2)
+_p = plot(sol2.t,P2,xaxis=("Time",(-1,51)),yscale=:log10,yaxis=("Energy in Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:best,linewidth=2)
 savefig(_p,dn*"GQL_"*"$Λ"*"_em.png")
 
 P3,O3 = zonalenergy(lx,ly,nx,ny,Λ,sol3.u);
-_p = plot(sol3.t,P3,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-9,1e3)),labels=zones,palette=:tab10,legend=:best,linewidth=2)
+_p = plot(sol3.t,P3,xaxis=("Time",(-1,51)),yscale=:log10,yaxis=("Energy in Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:best,linewidth=2)
 savefig(_p,dn*"GCE2_"*"$Λ"*"_em.png");
 
 ## Spatial vorticity
@@ -175,6 +175,19 @@ _ez = plot!(sol1.t,Z1,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",xaxis="
 # savefig(_m,dn*"GCE2_"*"$Λ"*"_m_t.png")
 
 ## tests
+lx = 4.0*Float64(pi);
+ly = 2.0*Float64(pi);
+nx = 8;
+ny = 10;
+
+Ω = 2.0*Float64(pi)
+θ = Float64(pi)/6.0
+β = 2.0*Ω*cos(θ)
+Ξ = 0.2*Ω
+τ = 10.0/Ω
+
+ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
+
 A = acoeffs(ly,ny,Ξ,τ)
 B = bcoeffs(lx,ly,nx,ny,β,τ)
 Cp,Cm = ccoeffs(lx,ly,nx,ny)
@@ -187,31 +200,26 @@ display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progres
 @info "Removed dζ from NL equations on $(nx-1)x$(ny-1) grid"
 prob = ODEProblem(nl_eqs2!,ζ0,tspan,p)
 display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
-@info "Running that using Tsit5"
-prob = ODEProblem(nl_eqs2!,ζ0,tspan,p)
-display(@benchmark solve(prob,Tsit5(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+@info "Running that using @views"
+prob = ODEProblem(nl_eqs3!,ζ0,tspan,p)
+display(@benchmark sol1 = solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
 
-A = acoeffs(ly,ny,Ξ,τ)
-B = bcoeffs(lx,ly,nx,ny,β,τ)
-Cp,Cm = ccoeffs(lx,ly,nx,ny)
+Λ = 7
+Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
 p = [nx,ny,Λ,A,B,Cp,Cm]
-tspan = (0.0,200.0)
 
-Λ = nx - 2
 @info "Unoptimized GQL equations on $(nx-1)x$(ny-1) grid"
 prob = ODEProblem(gql_eqs!,ζ0,tspan,p)
 display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
-@info "Removed dζ from GQL equations on $(nx-1)x$(ny-1) grid"
+@info "Optimized GQL equations on $(nx-1)x$(ny-1) grid"
 prob = ODEProblem(gql_eqs2!,ζ0,tspan,p)
 display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
-@info "Running that using Tsit5"
-prob = ODEProblem(gql_eqs2!,ζ0,tspan,p)
-display(@benchmark solve(prob,Tsit5(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
 
-@info "Unoptimized GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
-prob = ODEProblem(gce2_eqs!,ic_cumulants(nx,ny,Λ,ζ0),tspan,p)
-display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
-@info "Removed dζ from GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
-prob = ODEProblem(gce2_eqs2!,ic_cumulants(nx,ny,Λ,ζ0),tspan,p)
-display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
-sol3 = solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20)
+# u0 = ic_cumulants(nx,ny,Λ,ζ0)
+#
+# @info "Unoptimized GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
+# prob = ODEProblem(gce2_eqs!,ic_cumulants(nx,ny,Λ,u0),tspan,p)
+# display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+# @info "Removed dζ from GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
+# prob = ODEProblem(gce2_eqs!,ic_cumulants(nx,ny,Λ,u0),tspan,p)
+# display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))

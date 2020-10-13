@@ -2,20 +2,13 @@ function nl_eqs!(du,u,p,t)
 
     nx::Int,ny::Int,A::Array{ComplexF64,1},B::Array{ComplexF64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
 
-    M::Int = nx - 1
-    N::Int = ny - 1
-
     dζ = fill!(similar(du),0)
 
-    for n=1:1:N
+    dζ[ny:end,1] = A[ny:end]
 
-        dζ[n+ny,1] += A[n+ny]
-
-    end
-
-    for m = 0:1:M
-        nmin = m == 0 ? 1 : -N
-        for n=nmin:1:N
+    for m = 0:nx-1
+        nmin = m == 0 ? 1 : -(ny-1)
+        for n=nmin:ny-1
 
             dζ[n+ny,m+1] += B[n+ny,m+1]*u[n+ny,m+1]
 
@@ -23,16 +16,15 @@ function nl_eqs!(du,u,p,t)
     end
 
     # ++ interactions
-    for m1=1:1:M
-        for n1=-N:1:N
-            for m2=0:1:min(m1,M-m1)
+    for m1=1:nx-1
+        for n1=-(ny-1):ny-1
+            for m2=0:min(m1,nx-1-m1)
 
-                n2min = m2 == 0 ? 1 : -N
-                for n2=max(n2min,-N-n1):1:min(N,N-n1)
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                for n2=max(n2min,-(ny-1)-n1):min(ny-1,ny-1-n1)
 
                     m::Int = m1 + m2
                     n::Int = n1 + n2
-
                     dζ[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
 
                 end
@@ -41,17 +33,16 @@ function nl_eqs!(du,u,p,t)
     end
 
     # +- interactions
-    for m1=1:1:M
-        for n1=-N:1:N
-            for m2=0:1:m1
+    for m1=1:nx-1
+        for n1=-(ny-1):ny-1
+            for m2=0:m1
 
-                n2min = m2 == 0 ? 1 : -N
-                n2max = m2 == m1 ? n1 - 1 : N
-                for n2=max(n2min,n1-N):1:min(n2max,n1+N)
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                n2max = m2 == m1 ? n1 - 1 : ny-1
+                for n2=max(n2min,n1-(ny-1)):min(n2max,n1+ny-1)
 
                     m::Int = m1 - m2
                     n::Int = n1 - n2
-
                     dζ[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
 
                 end
@@ -61,6 +52,59 @@ function nl_eqs!(du,u,p,t)
 
     du .= dζ
 
+end
+
+function nl_eqs2!(du,u,p,t)
+
+    nx::Int,ny::Int,A::Array{ComplexF64,1},B::Array{ComplexF64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
+
+    du .= 0.0 + 0.0im
+    du[ny:end,1] = A[ny:end]
+
+    for m = 0:nx-1
+        nmin = m == 0 ? 1 : -(ny-1)
+        for n=nmin:ny-1
+
+            du[n+ny,m+1] += B[n+ny,m+1]*u[n+ny,m+1]
+
+        end
+    end
+
+    # ++ interactions
+    for m1=1:nx-1
+        for n1=-(ny-1):ny-1
+            for m2=0:min(m1,nx-1-m1)
+
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                for n2=max(n2min,-(ny-1)-n1):min(ny-1,ny-1-n1)
+
+                    m::Int = m1 + m2
+                    n::Int = n1 + n2
+                    du[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
+
+                end
+            end
+        end
+    end
+
+    # +- interactions
+    for m1=1:nx-1
+        for n1=-(ny-1):ny-1
+            for m2=0:m1
+
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                n2max = m2 == m1 ? n1 - 1 : ny-1
+                for n2=max(n2min,n1-(ny-1)):min(n2max,n1+ny-1)
+
+                    m::Int = m1 - m2
+                    n::Int = n1 - n2
+                    du[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
+
+                end
+            end
+        end
+    end
+    nothing
 end
 
 function gql_eqs!(du,u,p,t)

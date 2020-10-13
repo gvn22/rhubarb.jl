@@ -4,6 +4,7 @@ using RecursiveArrayTools
 using FFTW
 using LinearAlgebra
 using Plots: plot,plot!,plotlyjs,pyplot,savefig
+using BenchmarkTools
 # ENV["JULIA_DEBUG"] = Main
 
 include("coefficients.jl")
@@ -21,15 +22,15 @@ nx = 8;
 ny = 10;
 
 Ω = 2.0*Float64(pi)
-θ = Float64(pi)/3.0
-β = 2.0*Ω*sin(θ)
+θ = Float64(pi)/6.0
+β = 2.0*Ω*cos(θ)
 Ξ = 0.2*Ω
 τ = 10.0/Ω
-Λ = 3
+Λ = 0
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
-sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0,savefreq=5);
+sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,savefreq=1);
 sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,t_end=200.0);
 sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,poscheck=false);
 
@@ -44,7 +45,7 @@ mkpath(dn)
 zones = reshape(["$i" for i = 0:1:nx-1],1,nx);
 
 P1,O1 = zonalenergy(lx,ly,nx,ny,sol1.u);
-_p = plot(sol1.t,P1,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-9,1e3)),labels=zones,palette=:tab10,legend=:best,linewidth=2)
+_p = plot(sol1.t,P1,xaxis=("Time",(-1,51)),yscale=:log10,yaxis=("Energy in Zonal Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:bottomright,linewidth=1.5)
 savefig(_p,dn*"NL_em.png");
 
 P2,O2 = zonalenergy(lx,ly,nx,ny,sol2.u);
@@ -174,3 +175,18 @@ _ez = plot!(sol1.t,Z1,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",xaxis="
 # savefig(_m,dn*"GCE2_"*"$Λ"*"_m_t.png")
 
 ## tests
+A = acoeffs(ly,ny,Ξ,τ)
+B = bcoeffs(lx,ly,nx,ny,β,τ)
+Cp,Cm = ccoeffs(lx,ly,nx,ny)
+p = [nx,ny,A,B,Cp,Cm]
+tspan = (0.0,200.0)
+
+@info "Unoptimized NL equations on $(nx-1)x$(ny-1) grid"
+prob = ODEProblem(nl_eqs!,ζ0,tspan,p)
+display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+@info "Removed dζ from NL equations on $(nx-1)x$(ny-1) grid"
+prob = ODEProblem(nl_eqs2!,ζ0,tspan,p)
+display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+@info "Running that using Tsit5"
+prob = ODEProblem(nl_eqs2!,ζ0,tspan,p)
+display(@benchmark solve(prob,Tsit5(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))

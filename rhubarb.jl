@@ -26,12 +26,12 @@ ny = 10;
 β = 2.0*Ω*cos(θ)
 Ξ = 0.2*Ω
 τ = 10.0/Ω
-Λ = 7
+Λ = 0
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
 sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,savefreq=20);
-sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,t_end=200.0);
+sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0);
 sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,poscheck=false);
 
 """ Create plots
@@ -204,7 +204,7 @@ display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progres
 prob = ODEProblem(nl_eqs3!,ζ0,tspan,p)
 display(@benchmark sol1 = solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
 
-Λ = 7
+Λ = 4
 Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
 p = [nx,ny,Λ,A,B,Cp,Cm]
 
@@ -216,7 +216,7 @@ prob = ODEProblem(gql_eqs2!,ζ0,tspan,p)
 display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
 
 # u0 = ic_cumulants(nx,ny,Λ,ζ0)
-#
+
 # @info "Unoptimized GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
 # prob = ODEProblem(gce2_eqs!,ic_cumulants(nx,ny,Λ,u0),tspan,p)
 # display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))

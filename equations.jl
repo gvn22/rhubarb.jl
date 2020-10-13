@@ -107,6 +107,59 @@ function nl_eqs2!(du,u,p,t)
     nothing
 end
 
+function nl_eqs3!(du,u,p,t)
+
+    nx::Int,ny::Int,A::Array{ComplexF64,1},B::Array{ComplexF64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
+
+    @views du .= 0.0 + 0.0im
+    @views du[ny:end,1] .= A[ny:end]
+
+    for m = 0:nx-1
+        nmin = m == 0 ? 1 : -(ny-1)
+        for n=nmin:ny-1
+
+            @views du[n+ny,m+1] += B[n+ny,m+1]*u[n+ny,m+1]
+
+        end
+    end
+
+    # ++ interactions
+    for m1=1:nx-1
+        for n1=-(ny-1):ny-1
+            for m2=0:min(m1,nx-1-m1)
+
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                for n2=max(n2min,-(ny-1)-n1):min(ny-1,ny-1-n1)
+
+                    m::Int = m1 + m2
+                    n::Int = n1 + n2
+                    @views du[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
+
+                end
+            end
+        end
+    end
+
+    # +- interactions
+    for m1=1:nx-1
+        for n1=-(ny-1):ny-1
+            for m2=0:m1
+
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                n2max = m2 == m1 ? n1 - 1 : ny-1
+                for n2=max(n2min,n1-(ny-1)):min(n2max,n1+ny-1)
+
+                    m::Int = m1 - m2
+                    n::Int = n1 - n2
+                    @views du[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
+
+                end
+            end
+        end
+    end
+    nothing
+end
+
 function gql_eqs!(du,u,p,t)
 
     nx::Int,ny::Int,Λ::Int,A::Array{ComplexF64,1},B::Array{ComplexF64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p

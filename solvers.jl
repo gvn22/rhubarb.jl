@@ -11,18 +11,6 @@ function nl(lx::Float64,ly::Float64,nx::Int,ny::Int,Ξ::Float64,β::Float64,τ::
     solve(prob,RK4(),dt=dt,adaptive=false,progress=true,progress_steps=10000,save_start=true,saveat=savefreq,save_everystep=savefreq==1 ? true : false)
 end
 
-function nl2(lx::Float64,ly::Float64,nx::Int,ny::Int,Ξ::Float64,β::Float64,τ::Float64=0.0,
-    νn::Float64=0.0;ic::Array{ComplexF64,2},dt::Float64=0.001,t_end::Float64=1000.0,savefreq::Int=20,kwargs...)
-    A = acoeffs(ly,ny,Ξ,τ)
-    B = bcoeffs(lx,ly,nx,ny,β,τ,νn)
-    Cp,Cm = ccoeffs(lx,ly,nx,ny)
-    p = [nx,ny,A,B,Cp,Cm]
-    tspan = (0.0,t_end)
-    prob = ODEProblem(nl_eqs2!,ic,tspan,p)
-    # @info "Solving NL equations on $(nx-1)x$(ny-1) grid"
-    solve(prob,RK4(),dt=dt,adaptive=false,progress=true,progress_steps=10000,save_start=true,save_everystep=savefreq==1 ? true : false,saveat=savefreq)
-end
-
 ## GQL
 function gql(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Float64,τ::Float64=0.0,
     νn::Float64=0.0;ic::Array{ComplexF64,2},dt::Float64=0.001,t_end::Float64=1000.0,savefreq::Int=20,kwargs...)

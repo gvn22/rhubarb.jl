@@ -1,5 +1,5 @@
 using OrdinaryDiffEq
-using DiffEqCallbacks
+using DiffEqCallbacks: DiscreteCallback
 using RecursiveArrayTools
 using FFTW
 using LinearAlgebra
@@ -17,27 +17,27 @@ include("analysis.jl")
 """
 lx = 4.0*Float64(pi);
 ly = 2.0*Float64(pi);
-nx = 7;
-ny = 11;
+nx = 8;
+ny = 10;
 
 Ω = 2.0*Float64(pi)
 θ = Float64(pi)/3.0
 β = 2.0*Ω*sin(θ)
-Ξ = 0.4*Ω
-τ = 20.0/Ω
-Λ = 0
+Ξ = 0.2*Ω
+τ = 10.0/Ω
+Λ = 3
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
-sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.005,t_end=200.0,savefreq=5);
+sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0,savefreq=5);
 sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,t_end=200.0);
-sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.005,t_end=200.0,poscheck=false);
+sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,poscheck=false);
 
 """ Create plots
 """
 # plotlyjs();
 pyplot();
-dn = "tests/8x10/l60j0_2t10/"
+dn = "tests/7x11/l60j0_2t10/"
 mkpath(dn)
 
 ## Zonal energy
@@ -93,13 +93,44 @@ _a = plot(sol3.t,angles,A3',xaxis="t",st=:contourf,color=:bwr,yaxis="<ζ>",label
 savefig(_a,dn*"GCE2_"*"$Λ"*"_a_t.png")
 
 ## Mean vorticity: t_end
-Ajet = real.(ifft(ifftshift(ic_eqm(lx,ly,nx,ny,Ξ)[:,1])))
+Ajet = real(ifft(ifftshift(ic_eqm(lx,ly,nx,ny,Ξ)[:,1])))
 
 plot(angles,Ajet,xaxis="θ",yaxis="<ζ>",color=:black,linewidth=2,label="Jet")
 plot!(angles,A1[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
 plot!(angles,A2[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GQL($Λ)")
 _zt = plot!(angles,A3[end,:],legend=:bottomright,xaxis="θ",yaxis="<ζ>",linewidth=2,label="GCE2($Λ)")
 savefig(_zt,dn*"zt_"*"$Λ"*".png")
+
+## Fourier space energy
+mm = LinRange(-(nx-1),nx-1,2*nx-1);
+nn = LinRange(-(ny-1),ny-1,2*ny-1);
+
+ef = fourierenergy(lx,ly,nx,ny,sol1.u)
+_ef = plot(mm,nn,ef[:,:,begin],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
+_ef = plot(mm,nn,ef[:,:,end],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
+savefig(_a,dn*"NL_ef.png")
+
+ef = fourierenergy(lx,ly,nx,ny,sol2.u)
+_ef = plot(mm,nn,ef[:,:,begin],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
+_ef = plot(mm,nn,ef[:,:,end],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
+savefig(_a,dn*"GQL_"*"$Λ"*"_ef.png")
+
+ef = fourierenergy(lx,ly,nx,ny,Λ,sol3.u)
+_ef = plot(mm,nn,ef[:,:,begin],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
+_ef = plot(mm,nn,ef[:,:,end],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
+_ef = plot(sol3.t,mm,ef[ny-1,:,:],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
+
+savefig(_a,dn*"GQL_"*"$Λ"*"_ef.png")
+
+## Zonal velocity
+uz = zonalvelocity(lx,ly,nx,ny,sol1.u)
+plot(uz[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+
+uz = zonalvelocity(lx,ly,nx,ny,sol2.u)
+plot(uz[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+
+uz = zonalvelocity(lx,ly,nx,ny,Λ,sol3.u)
+plot(uz[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
 
 ## Energy & enstropy
 e_zon,e_turb = e_lohi(lx,ly,nx,ny,Λ,sol1.u)
@@ -112,9 +143,9 @@ _ezt = plot(sol2.t,e_zon,linewidth=2,label="Zonal");
 _ezt = plot!(sol2.t,e_turb,linewidth=2,legend=:best,yaxis="Energy",xaxis="Time",label="Turbulence")
 plot(e_zon,e_turb)
 
-# E1,Z1 = energy(lx,ly,nx,ny,sol1.u);
-# _ez = plot(sol1.t,E1,linewidth=2,label="E");
-# _ez = plot!(sol1.t,Z1,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",xaxis="Time",label="Z")
+E1,Z1 = energy(lx,ly,nx,ny,sol1.u);
+_ez = plot(sol1.t,E1,linewidth=2,label="E");
+_ez = plot!(sol1.t,Z1,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",xaxis="Time",label="Z")
 # savefig(_ez,dn*"NL_ez_t.png");
 
 # E2,Z2 = energy(lx,ly,nx,ny,sol2.u)

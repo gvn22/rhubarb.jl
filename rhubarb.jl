@@ -30,7 +30,7 @@ ny = 10;
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
-sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,savefreq=1);
+sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,savefreq=20);
 sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,t_end=200.0);
 sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,poscheck=false);
 
@@ -190,3 +190,28 @@ display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progres
 @info "Running that using Tsit5"
 prob = ODEProblem(nl_eqs2!,ζ0,tspan,p)
 display(@benchmark solve(prob,Tsit5(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+
+A = acoeffs(ly,ny,Ξ,τ)
+B = bcoeffs(lx,ly,nx,ny,β,τ)
+Cp,Cm = ccoeffs(lx,ly,nx,ny)
+p = [nx,ny,Λ,A,B,Cp,Cm]
+tspan = (0.0,200.0)
+
+Λ = nx - 2
+@info "Unoptimized GQL equations on $(nx-1)x$(ny-1) grid"
+prob = ODEProblem(gql_eqs!,ζ0,tspan,p)
+display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+@info "Removed dζ from GQL equations on $(nx-1)x$(ny-1) grid"
+prob = ODEProblem(gql_eqs2!,ζ0,tspan,p)
+display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+@info "Running that using Tsit5"
+prob = ODEProblem(gql_eqs2!,ζ0,tspan,p)
+display(@benchmark solve(prob,Tsit5(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+
+@info "Unoptimized GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
+prob = ODEProblem(gce2_eqs!,ic_cumulants(nx,ny,Λ,ζ0),tspan,p)
+display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+@info "Removed dζ from GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
+prob = ODEProblem(gce2_eqs2!,ic_cumulants(nx,ny,Λ,ζ0),tspan,p)
+display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+sol3 = solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20)

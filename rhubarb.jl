@@ -204,7 +204,7 @@ display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progres
 prob = ODEProblem(nl_eqs3!,ζ0,tspan,p)
 display(@benchmark sol1 = solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
 
-Λ = 7
+Λ = 4
 A = acoeffs(ly,ny,Ξ,τ)
 B = bcoeffs(lx,ly,nx,ny,β,τ)
 Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
@@ -223,5 +223,10 @@ u0 = ic_cumulants(nx,ny,Λ,ζ0)
 prob = ODEProblem(gce2_eqs!,u0,tspan,p)
 display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=1000,save_start=false,save_everystep=false,saveat=20))
 @info "Removed dζ from GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
+prob = ODEProblem(gce2_eqs2!,u0,tspan,p)
+display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=1000,save_start=false,save_everystep=false,saveat=20))
+@info "Removed dθ from GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
 prob = ODEProblem(gce2_eqs3!,u0,tspan,p)
 display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=1000,save_start=false,save_everystep=false,saveat=20))
+
+    

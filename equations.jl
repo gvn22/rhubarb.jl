@@ -875,7 +875,7 @@ function gce2_eqs3!(du,u,p,t)
 
     # field bilinear equations
     du.x[2] .= 0.0 + 0.0im
-    temp = fill!(similar(u.x[2]),0)
+    temp = fill!(similar(du.x[2]),0)
 
     # H + L = H
     # println("H+L = H")
@@ -919,7 +919,7 @@ function gce2_eqs3!(du,u,p,t)
             for m=Λ+1:1:M
                 for n=-N:1:N
 
-                    @views du.x[2][n+ny,m-Λ,n3+ny,m3-Λ] = B[n+ny,m+1]*u.x[2][n+ny,m-Λ,n3+ny,m3-Λ]
+                    @views du.x[2][n+ny,m-Λ,n3+ny,m3-Λ] += B[n+ny,m+1]*u.x[2][n+ny,m-Λ,n3+ny,m3-Λ]
 
                     accumulator::ComplexF64 = 0.0 + 0.0im
 
@@ -950,7 +950,7 @@ function gce2_eqs3!(du,u,p,t)
         end
     end
 
-    @views temp = permutedims(du.x[2],[3,4,1,2])
+    permutedims!(temp,du.x[2],[3,4,1,2])
 
     for m3=Λ+1:1:M
         for n3=-N:1:N

@@ -1,5 +1,13 @@
-Structure for GCE2 field bilinear
-Array split for positive and negative n's
-Separate enstrophy and energy computation
-Compute power in modes, and use to compare NL v GQL
-Move key functions to module Triads
+############
+## Urgent ##
+############
+> Norm definition for GCE2
+> Test and optimize callbacks for GCE2
+> Debug differences in GCE2
+
+############
+## Future ##
+############
+> Implement parallel threads
+> Array split for positive and negative n's
+> Implement a save_callback to diagnose energy flow

@@ -1,611 +1,137 @@
-using OrdinaryDiffEq,FFTW
-using TimerOutputs,BenchmarkTools
-using Plots; plotly()
-
-function l_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,β::Float64,ν::Float64)
-
-    ω = zeros(Float64,2*ny-1,nx)
-    v = zeros(Float64,2*ny-1,nx)
-    v4 = zeros(Float64,2*ny-1,nx)
-
-    M::Int = nx - 1
-    N::Int = ny - 1
-
-    kxmax::Float64 = 2.0*Float64(pi)/lx*Float64(M)
-    kymax::Float64 = 2.0*Float64(pi)/ly*Float64(N)
-
-    α::Int = 2
-
-    for m = 0:1:M
-        nmin = m == 0 ? 1 : -N
-        for n=nmin:1:N
-
-            kx::Float64 = 2.0*Float64(pi)/lx*Float64(m)
-            ky::Float64 = 2.0*Float64(pi)/ly*Float64(n)
-
-            ω[n+ny,m+1] = β*kx/(kx^2 + ky^2)
-            v[n+ny,m+1] = -ν*(kx^2 + ky^2)
-
-            v4[n+ny,m+1] = -ν*((kx^2 + ky^2)/(kxmax^2 + kymax^2))^(2*α)
-
-        end
-    end
-
-    return ω,v,v4
-
-end
-
-function nl_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int)
-
-    M::Int = nx - 1
-    N::Int = ny - 1
-
-    Cp = zeros(Float64,2*ny-1,nx,2*ny-1,nx)
-    Cm = zeros(Float64,2*ny-1,nx,2*ny-1,nx)
-
-    # Δp = []
-    # Δm = []
-
-    # ++ interactions note: +0 has only (0,+n)
-    for m1=1:1:M
-        for n1=-N:1:N
-            for m2=0:1:min(m1,M-m1)
-
-                n2min = m2 == 0 ? 1 : -N
-                for n2=max(n2min,-N-n1):1:min(N,N-n1)
-
-                    px::Float64 = 2.0*Float64(pi)/lx*Float64(m1)
-                    py::Float64 = 2.0*Float64(pi)/ly*Float64(n1)
-                    qx::Float64 = 2.0*Float64(pi)/lx*Float64(m2)
-                    qy::Float64 = 2.0*Float64(pi)/ly*Float64(n2)
-
-                    if m1 == m2
-                        Cp[n2+ny,m2+1,n1+ny,m1+1] = -(px*qy - qx*py)/(px^2 + py^2)
-                    else
-                        Cp[n2+ny,m2+1,n1+ny,m1+1] = -(px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
-                    end
-
-                    # m::Int = m1 + m2
-                    # n::Int = n1 + n2
-                    # push!(Δp,[m,n,m1,n1,m2,n2,Cp[n2+ny,m2+1,n1+ny,m1+1]])
-
-                end
-            end
-        end
-    end
-
-    # +- interactions note: - includes (0,-n) because it is conj(0,n)
-    for m1=1:1:M
-        for n1=-N:1:N
-            for m2=0:1:m1
-
-                n2min = m2 == 0 ? 1 : -N
-                n2max = m2 == m1 ? n1 - 1 : N
-                for n2=max(n2min,n1-N):1:min(n2max,n1+N)
-
-                    px::Float64 = 2.0*Float64(pi)/lx*Float64(m1)
-                    py::Float64 = 2.0*Float64(pi)/ly*Float64(n1)
-                    qx::Float64 = 2.0*Float64(pi)/lx*Float64(m2)
-                    qy::Float64 = 2.0*Float64(pi)/ly*Float64(n2)
-
-                    Cm[n2+ny,m2+1,n1+ny,m1+1] = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
-
-                    # m::Int = m1 - m2
-                    # n::Int = n1 - n2
-                    # push!(Δm,[m,n,m1,n1,-m2,-n2,Cm[n2+ny,m2+1,n1+ny,m1+1]])
-
-                end
-            end
-        end
-    end
-
-    return Cp,Cm
-
-end
-
-function nl_eqs!(du,u,p,t)
-
-    nx::Int,ny::Int,ω::Array{Float64,2},v::Array{Float64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
-    M::Int = nx - 1
-    N::Int = ny - 1
-
-    dζ = fill!(similar(du),0)
-
-    for m = 0:1:M
-        nmin = m == 0 ? 1 : -N
-        for n=nmin:1:N
-
-            dζ[n+ny,m+1] += im*ω[n+ny,m+1]*u[n+ny,m+1]
-            dζ[n+ny,m+1] += v[n+ny,m+1]*u[n+ny,m+1]
-
-        end
-    end
-
-    # ++ interactions
-    for m1=1:1:M
-        for n1=-N:1:N
-            for m2=0:1:min(m1,M-m1)
-
-                n2min = m2 == 0 ? 1 : -N
-                for n2=max(n2min,-N-n1):1:min(N,N-n1)
-
-                    m::Int = m1 + m2
-                    n::Int = n1 + n2
-
-                    dζ[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
-                    # could eliminate addition on array indices
-
-                end
-            end
-        end
-    end
-
-    # +- interactions
-    for m1=1:1:M
-        for n1=-N:1:N
-            for m2=0:1:m1
-
-                n2min = m2 == 0 ? 1 : -N
-                n2max = m2 == m1 ? n1 - 1 : N
-                for n2=max(n2min,n1-N):1:min(n2max,n1+N)
-
-                    m::Int = m1 - m2
-                    n::Int = n1 - n2
-
-                    dζ[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
-
-                end
-            end
-        end
-    end
-
-    du .= dζ
-
-end
-
-function gql_coeffs(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int)
-
-    M::Int = nx - 1
-    N::Int = ny - 1
-
-    Cp = zeros(Float64,2*ny-1,nx,2*ny-1,nx)
-    Cm = zeros(Float64,2*ny-1,nx,2*ny-1,nx)
-
-    # Δp = []
-    # Δm = []
-
-    # L + L = L
-    for m1=1:1:Λ
-        for n1=-N:1:N
-            for m2=0:1:min(m1,Λ-m1)
-
-                n2min = m2 == 0 ? 1 : -N
-                for n2=max(n2min,-N-n1):1:min(N,N-n1)
-
-                    px::Float64 = 2.0*Float64(pi)/lx*Float64(m1)
-                    py::Float64 = 2.0*Float64(pi)/ly*Float64(n1)
-                    qx::Float64 = 2.0*Float64(pi)/lx*Float64(m2)
-                    qy::Float64 = 2.0*Float64(pi)/ly*Float64(n2)
-
-                    if m1 == m2
-                        Cp[n2+ny,m2+1,n1+ny,m1+1] = -(px*qy - qx*py)/(px^2 + py^2)
-                    else
-                        Cp[n2+ny,m2+1,n1+ny,m1+1] = -(px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
-                    end
-
-                    # m::Int = m1 + m2
-                    # n::Int = n1 + n2
-                    # push!(Δp,[m,n,m1,n1,m2,n2,Cp[n2+ny,m2+1,n1+ny,m1+1]])
-
-                end
-            end
-        end
-    end
-
-    # L - L = L
-    # note: -L should always include (0,-n)
-    for m1=1:1:Λ
-        for n1=-N:1:N
-            for m2=0:1:m1
-
-                n2min = m2 == 0 ? 1 : -N
-                n2max = m2 == m1 ? n1 - 1 : N
-                for n2=max(n2min,n1-N):1:min(n2max,n1+N)
-
-                    px::Float64 = 2.0*Float64(pi)/lx*Float64(m1)
-                    py::Float64 = 2.0*Float64(pi)/ly*Float64(n1)
-                    qx::Float64 = 2.0*Float64(pi)/lx*Float64(m2)
-                    qy::Float64 = 2.0*Float64(pi)/ly*Float64(n2)
-
-                    Cm[n2+ny,m2+1,n1+ny,m1+1] = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
-
-                    # m::Int = m1 - m2
-                    # n::Int = n1 - n2
-                    # push!(Δm,[m,n,m1,n1,-m2,-n2,Cm[n2+ny,m2+1,n1+ny,m1+1]])
-
-                end
-            end
-        end
-    end
-
-    # H - H = L
-    for m1=Λ+1:1:M
-        for n1=-N:1:N
-            for m2=max(Λ+1,m1-Λ):1:m1
-
-                n2max = m2 == m1 ? n1 - 1 : N
-                for n2=max(-N,n1-N):1:min(n2max,n1+N)
-
-                    px::Float64 = 2.0*Float64(pi)/lx*Float64(m1)
-                    py::Float64 = 2.0*Float64(pi)/ly*Float64(n1)
-                    qx::Float64 = 2.0*Float64(pi)/lx*Float64(m2)
-                    qy::Float64 = 2.0*Float64(pi)/ly*Float64(n2)
-
-                    Cm[n2+ny,m2+1,n1+ny,m1+1] = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
-
-                    # m::Int = m1 - m2
-                    # n::Int = n1 - n2
-                    # push!(Δm,[m,n,m1,n1,-m2,-n2,Cm[n2+ny,m2+1,n1+ny,m1+1]])
-
-                end
-            end
-        end
-    end
-
-    # H + L = H
-    for m1=Λ+1:1:M
-        for n1=-N:1:N
-            for m2=0:1:min(M-m1,Λ)
-
-                n2min = m2 == 0 ? 1 : -N
-                for n2=max(n2min,-N-n1):1:min(N,N-n1)
-
-                    px::Float64 = 2.0*Float64(pi)/lx*Float64(m1)
-                    py::Float64 = 2.0*Float64(pi)/ly*Float64(n1)
-                    qx::Float64 = 2.0*Float64(pi)/lx*Float64(m2)
-                    qy::Float64 = 2.0*Float64(pi)/ly*Float64(n2)
-
-                    Cp[n2+ny,m2+1,n1+ny,m1+1] = -(px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
-
-                    # m::Int = m1 + m2
-                    # n::Int = n1 + n2
-                    # push!(Δp,[m,n,m1,n1,m2,n2,Cp[n2+ny,m2+1,n1+ny,m1+1]])
-
-                end
-            end
-        end
-    end
-
-    # H - L = H
-    # note: -L should always include (0,-n)
-    for m1=Λ+1:1:M
-        for n1=-N:1:N
-            for m2=0:1:min(Λ,m1 - Λ - 1)
-
-                n2min = m2 == 0 ? 1 : -N
-                for n2=max(n2min,n1-N):1:min(N,n1+N)
-
-                    px::Float64 = 2.0*Float64(pi)/lx*Float64(m1)
-                    py::Float64 = 2.0*Float64(pi)/ly*Float64(n1)
-                    qx::Float64 = 2.0*Float64(pi)/lx*Float64(m2)
-                    qy::Float64 = 2.0*Float64(pi)/ly*Float64(n2)
-
-                    Cm[n2+ny,m2+1,n1+ny,m1+1] = (px*qy - qx*py)*(1.0/(px^2 + py^2) - 1.0/(qx^2 + qy^2))
-
-                    # m::Int = m1 - m2
-                    # n::Int = n1 - n2
-                    # push!(Δm,[m,n,m1,n1,-m2,-n2,Cm[n2+ny,m2+1,n1+ny,m1+1]])
-
-                end
-            end
-        end
-    end
-
-    return Cp,Cm
-
-end
-
-function gql_eqs!(du,u,p,t)
-
-    nx::Int,ny::Int,Λ::Int,ω::Array{Float64,2},v::Array{Float64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
-
-    M::Int = nx - 1
-    N::Int = ny - 1
-
-    dζ = fill!(similar(du),0)
-
-    # linear terms
-    for m = 0:1:M
-        nmin = m == 0 ? 1 : -N
-        for n=nmin:1:N
-
-            dζ[n+ny,m+1] += im*ω[n+ny,m+1]*u[n+ny,m+1]
-            dζ[n+ny,m+1] += v[n+ny,m+1]*u[n+ny,m+1]
-
-        end
-    end
-
-    # L + L = L
-    for m1=1:1:Λ
-        for n1=-N:1:N
-            for m2=0:1:min(m1,Λ-m1)
-
-                n2min = m2 == 0 ? 1 : -N
-                for n2=max(n2min,-N-n1):1:min(N,N-n1)
-
-                    m::Int = m1 + m2
-                    n::Int = n1 + n2
-
-                    dζ[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
-
-                end
-            end
-        end
-    end
-
-    # L - L = L
-    for m1=1:1:Λ
-        for n1=-N:1:N
-            for m2=0:1:m1
-
-                n2min = m2 == 0 ? 1 : -N
-                n2max = m2 == m1 ? n1 - 1 : N
-                for n2=max(n2min,n1-N):1:min(n2max,n1+N)
-
-                    m::Int = m1 - m2
-                    n::Int = n1 - n2
-
-                    dζ[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
-
-                end
-            end
-        end
-    end
-
-    # H - H = L
-    for m1=Λ+1:1:M
-        for n1=-N:1:N
-            for m2=max(Λ+1,m1-Λ):1:m1
-
-                n2max = m2 == m1 ? n1 - 1 : N
-                for n2=max(-N,n1-N):1:min(n2max,n1+N)
-
-                    m::Int = m1 - m2
-                    n::Int = n1 - n2
-
-                    dζ[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
-
-                end
-            end
-        end
-    end
-
-    # H + L = H
-    for m1=Λ+1:1:M
-        for n1=-N:1:N
-            for m2=0:1:min(M-m1,Λ)
-
-                n2min = m2 == 0 ? 1 : -N
-                for n2=max(n2min,-N-n1):1:min(N,N-n1)
-
-                    m::Int = m1 + m2
-                    n::Int = n1 + n2
-
-                    dζ[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
-
-                end
-            end
-        end
-    end
-
-    # H - L = H
-    for m1=Λ+1:1:M
-        for n1=-N:1:N
-            for m2=0:1:min(Λ,m1 - Λ - 1)
-
-                n2min = m2 == 0 ? 1 : -N
-                for n2=max(n2min,n1-N):1:min(N,n1+N)
-
-                    m::Int = m1 - m2
-                    n::Int = n1 - n2
-
-                    dζ[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
-
-                end
-            end
-        end
-    end
-
-    du .= dζ
-
-end
-
-function opt_eqs()
-
-    samples = 7
-    timings = zeros(samples)
-    for i in 1:1:samples
-
-        nx = i + 1
-        ny = i + 1
-
-        println("Solving Nx2N system with N = ", nx)
-        u0 = randn(ComplexF64,2*ny-1,nx)
-        tspan = (0.0,100.0)
-        Cp,Cm = nl_coeffs(lx,ly,nx,ny)
-        p = [nx,ny,Cp,Cm]
-        prob = ODEProblem(nl_eqs!,u0,tspan,p)
-        timings[i] = @elapsed solve(prob,RK4(),adaptive=true,progress=true,save_start=false,save_everystep=false)
-
-    end
-
-    dims = [i + 1 for i in 1:samples]
-    Plots.plot(dims,timings,scale=:log,xaxis="N",yaxis="T",markershape = :square,legend=false)
-
-end
-
-function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,β::Float64,ν::Float64,u0::Array{ComplexF64,2})
-
-    # u0 = rand(ComplexF64,2*ny-1,nx)
-    # u0 = [1.0 2.0; 3.0 4.0; 5.0 6.0]
-    tspan = (0.0,200.0)
-    ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
-    Cp,Cm = nl_coeffs(lx,ly,nx,ny)
-    p = [nx,ny,ω,v4,Cp,Cm]
-    prob = ODEProblem(nl_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
-
-    return sol
-end
-
-function exec(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,β::Float64,ν::Float64,u0::Array{ComplexF64,2})
-
-    # u0 = rand(ComplexF64,2*ny-1,nx)
-    # u0 = [1.0 2.0; 3.0 4.0; 5.0 6.0]
-    tspan = (0.0,200.0)
-    ω,v,v4 = l_coeffs(lx,ly,nx,ny,β,ν)
-    Cp,Cm = gql_coeffs(lx,ly,nx,ny,Λ)
-    p = [nx,ny,Λ,ω,v4,Cp,Cm]
-    prob = ODEProblem(gql_eqs!,u0,tspan,p)
-    @time sol = solve(prob,RK4(),adaptive=true,reltol=1e-6,abstol=1e-6,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=50)
-
-    return sol
-end
-
-function energy(lx,ly,nx,ny,sol)
-
-    E = zeros(Float64,length(sol.u))
-    Z = fill!(similar(E),0)
-
-    for i in eachindex(sol.u)
-
-        for m1 = 0:1:nx-1
-            n1min = m1 == 0 ? 1 : -ny + 1
-            for n1 = n1min:1:ny-1
-
-                cx,cy = (2.0*pi/lx)*m1,(2.0*pi/ly)*n1
-
-                E[i] += abs(sol.u[i][n1 + ny,m1 + 1])^2/(cx^2 + cy^2)
-                Z[i] += abs(sol.u[i][n1 + ny,m1 + 1])^2
-
-            end
-        end
-    end
-
-    Plots.plot(sol.t,E,linewidth=2,legend=true,xaxis="t",label="E (Energy)")
-    pez = Plots.plot!(sol.t,Z,linewidth=2,legend=true,xaxis="t",label="Z (Enstrophy)",yaxis="E, Z")
-
-    Plots.display(pez)
-
-    return E,Z
-
-end
-
-function inversefourier(sol,nx::Int,ny::Int)
-
-    umn = zeros(ComplexF64,2*ny-1,2*nx-1,length(sol.u))
-    uff = zeros(ComplexF64,2*ny-1,2*nx-1,length(sol.u))
-    uxy = zeros(Float64,2*ny-1,2*nx-1,length(sol.u))
-
-    for i in eachindex(sol.u)
-
-        for m1 = 0:1:nx-1
-            n1min = m1 == 0 ? 1 : -ny + 1
-            for n1 = n1min:1:ny-1
-
-                umn[n1 + ny,m1+nx,i] = sol.u[i][n1+ny,m1+1]
-                umn[-n1 + ny,-m1+nx,i] = conj(sol.u[i][n1+ny,m1+1])
-
-                if n1 == 0 && m1 == 0
-                    umn[-n1 + ny,-m1+nx,i] = 0.0 + im*0.0
-                end
-
-            end
-        end
-
-        uff[:,:,i] = ifft(ifftshift(umn[:,:,i]))
-
-        for m=1:1:2*nx-1
-            for n=1:1:2*ny-1
-                uxy[m,n,i] = real(uff[n,m,i])
-            end
-        end
-
-    end
-
-    return uxy,uff
-
-end
-
-function plot4time(var,fn::String,lx::Float64,ly::Float64,nx::Int,ny::Int)
-
-    x = LinRange(-lx,lx,2*nx-1)
-    y = LinRange(-ly,ly,2*ny-1)
-
-    anim = @animate for i ∈ 1:length(var[1,1,:])
-        Plots.plot(x,y,var[:,:,i],st=:contourf,color=:bwr,xaxis="x",yaxis="y",title=(i-1)*50,aspect=:equal)
-    end
-    gif(anim, fn, fps = 0.5)
-    # return nothing
-end
-
-# global code
-lx = 2.0*Float64(pi)
-ly = 2.0*Float64(pi)
-nx = 10
-ny = 10
-x = LinRange(-lx,lx,2*nx-1)
-y = LinRange(-ly,ly,2*ny-1)
+using OrdinaryDiffEq
+using DiffEqCallbacks
+using RecursiveArrayTools
+using FFTW
+using LinearAlgebra
+using Plots: plot,plot!,plotlyjs,savefig
+# ENV["JULIA_DEBUG"] = Main
+
+include("coefficients.jl")
+include("equations.jl")
+include("ics.jl")
+include("tools.jl")
+include("solvers.jl")
+include("analysis.jl")
+
+""" Set parameters and solve
+"""
+lx = 4.0*Float64(pi);
+ly = 2.0*Float64(pi);
+nx = 4;
+ny = 4;
+
+Ω = 2.0*Float64(pi)
+θ = 0.0
+β = 2.0*Ω*cos(θ)
+Ξ = 0.6*Ω
+τ = 10.0/Ω
 Λ = 1
-β = 1.0
-ν = 0.0
 
-uin = randn(ComplexF64,2*ny-1,nx)
+ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
-# NL solution
-u0 = uin
-sol1 = exec(lx,ly,nx,ny,β,ν,u0)
-E1,Z1 = energy(lx,ly,nx,ny,sol1)
+sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=500.0);
+sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,t_end=500.0);
+sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=500.0,poscheck=false);
 
-uxy,umn = inversefourier(sol1,nx,ny)
-Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-Plots.plot(x,y,uxy[:,:,20],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+""" Create plots
+"""
+plotlyjs();
+# pyplot();
 
-# plot4time(uxy,"zeta_beta.gif",lx,ly,nx,ny)
+## Zonal energy
+zones = reshape(["$i" for i = 0:1:nx-1],1,nx);
 
-# GQL solution
-u0 = uin
-sol2 = exec(lx,ly,nx,ny,Λ,β,ν,u0)
-E2,Z2 = energy(lx,ly,nx,ny,sol2)
+P1,O1 = zonalenergy(lx,ly,nx,ny,sol1.u);
+_p = plot(sol1.t,P1,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode"),labels=zones,legend=:right,linewidth=2)
+savefig(_p,dn*"NL_em_t.png");
 
-uxy,umn = inversefourier(sol2,nx,ny)
-Plots.plot(x,y,uxy[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
-Plots.plot(x,y,uxy[:,:,20],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+P2,O2 = zonalenergy(lx,ly,nx,ny,sol2.u);
+_p = plot(sol2.t,P2,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-2,1e3)),labels=zones,legend=:right,linewidth=2)
+savefig(_p,dn*"GQL_"*"$Λ"*"_em_t.png")
 
-# compare energy and enstrophy curves
-Plots.plot(sol1.t,E1,linewidth=2,label="Viscosity")
-Plots.plot!(sol2.t,E2,linewidth=2,label="Hyperviscosity")
+P3,O3 = zonalenergy(lx,ly,nx,ny,Λ,sol3.u);
+_p = plot(sol3.t,P3,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-2,1e3)),labels=zones,legend=:right,linewidth=2)
+savefig(_p,dn*"GCE2_"*"$Λ"*"_dt01.png");
 
-# tests
+## Modal strength
+modes = reshape(["($j,$i)" for j=0:1:nx-1 for i=-(ny-1):1:ny-1],1,nx*(2*ny-1));
 
-# Plots.plot(sol,vars=(0,1),linewidth=2,label="(0,-1)",legend=true)
-# Plots.plot!(sol,vars=(0,2),linewidth=2,label="(0,0)")
-# Plots.plot!(sol,vars=(0,3),linewidth=2,label="(0,1)")
-# Plots.plot!(sol,vars=(0,4),linewidth=2,label="(1,-1)")
-# Plots.plot!(sol,vars=(0,5),linewidth=2,label="(1,0)")
-# Plots.plot!(sol,vars=(0,6),linewidth=2,label="(1,1)")
+M1 = modalstrength(lx,ly,nx,ny,sol1.u);
+_m = plot(sol1.t,M1,labels=modes,legend=:outerright,linewidth=2,xaxis=("Time"),yaxis="Mode Strength")
+savefig(_m,dn*"NL_m_t.png");
 
-# opt_eqs()
+M2 = modalstrength(lx,ly,nx,ny,sol2.u);
+_m = plot(sol2.t,M2,labels=modes,legend=:outerright,linewidth=2,xaxis=("Time"),yaxis="Mode Strength")
+savefig(_m,dn*"GQL_"*"$Λ"*"_m_t.png");
 
-# u0 = randn(ComplexF64,2*ny-1,nx)
-# tspan = (0.0,1000.0)
-# Cp,Cm = nl_coeffs(lx,ly,nx,ny)
-# p = [nx,ny,Cp,Cm]
+M3 = modalstrength(lx,ly,nx,ny,Λ,sol3.u);
+_m = plot(sol3.t,M3,labels=modes,linewidth=2,xaxis=("Time"),yaxis="Mode Strength")
+savefig(_m,dn*"GCE2_"*"$Λ"*"_m_t.png")
 
-# @btime nl_coeffs(lx,ly,nx,ny)
-# du = similar(u0)
-# @time nl_eqs!(du,u0,p,tspan)
-# @code_warntype nl_eqs!(du,u0,p,tspan)
-# @code_warntype gql_eqs!(du,u0,p,tspan)
-# integrator = init(prob,RK4())
-# step!(integrator)
+## Spatial vorticity
+xx = LinRange(-lx/2,lx/2,2*nx-1);
+yy = LinRange(-ly/2,ly/2,2*ny-1);
+
+U1 = inversefourier(nx,ny,sol1.u);
+_u = plot(xx,yy,U1[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+savefig(_u,dn*"NL_z_init.png");
+_u = plot(xx,yy,U1[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+savefig(_u,dn*"NL_z_end.png");
+
+U2 = inversefourier(nx,ny,sol2.u);
+_u = plot(xx,yy,U2[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+savefig(_u,dn*"GQL_"*"$Λ"*"_z_init.png")
+_u = plot(xx,yy,U2[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+savefig(_u,dn*"GQL_"*"$Λ"*"_z_end.png")
+
+U3 = inversefourier(nx,ny,Λ,sol3.u)
+_u = plot(xx,yy,U3[:,:,begin],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+savefig(_u,dn*"GCE2_"*"$Λ"*"_z_init.png")
+_u = plot(xx,yy,U3[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+savefig(_u,dn*"GCE2_"*"$Λ"*"_z_end.png")
+
+## Hövmoller: mean vorticity
+angles = (180.0/ly)*LinRange(-ly/2,ly/2,2*ny-1);
+
+A1 = meanvorticity(lx,ly,nx,ny,sol1.u)
+_a = plot(sol1.t,angles,A1',xaxis="t",st=:contourf,color=:bwr,yaxis="<ζ>",label="NL")
+savefig(_a,dn*"NL_a_t.png")
+
+A2 = meanvorticity(lx,ly,nx,ny,sol2.u)
+_a = plot(sol2.t,angles,A2',xaxis="t",st=:contourf,color=:bwr,yaxis="<ζ>",label="GQL(0)")
+savefig(_a,dn*"GQL_"*"$Λ"*"_a_t.png")
+
+A3 = meanvorticity(lx,ly,nx,ny,Λ,sol3.u)
+_a = plot(sol3.t,angles,A3',xaxis="t",st=:contourf,color=:bwr,yaxis="<ζ>",label="GCE2(0)")
+savefig(_a,dn*"GCE2_"*"$Λ"*"_a_t.png")
+
+## Mean vorticity: t_end
+Ajet = real.(ifft(ifftshift(ic_eqm(lx,ly,nx,ny,Ξ)[:,1])))
+
+plot(angles,Ajet,xaxis="θ",yaxis="<ζ>",color=:black,linewidth=2,label="Jet")
+plot!(angles,A1[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
+plot!(angles,A2[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GQL(1)")
+plot!(angles,A3[end,:],legend=:bottomright,xaxis="θ",yaxis="<ζ>",linewidth=2,label="GCE2(1)")
+
+plot!(angles,A1[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="NL")
+plot!(angles,A2[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GQL(1)")
+plot!(angles,A3[end,:],xaxis="θ",yaxis="<ζ>",linewidth=2,label="GCE2(1)")
+
+## Energy & enstropy
+
+# E1,Z1 = energy(lx,ly,nx,ny,sol1.u);
+# _ez = plot(sol1.t,E1,linewidth=2,label="E");
+# _ez = plot!(sol1.t,Z1,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",xaxis="Time",label="Z")
+# savefig(_ez,dn*"NL_ez_t.png");
+
+# E2,Z2 = energy(lx,ly,nx,ny,sol2.u)
+# _ez = plot(sol2.t,E2,linewidth=2,label="E");
+# _ez = plot!(sol2.t,Z2,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",xaxis="Time",label="Z")
+# savefig(_ez,dn*"GQL_"*"$Λ"*"_ez_t.png");
+
+# E3,Z3 = energy(lx,ly,nx,ny,Λ,sol3.u);
+# _ez = plot(sol3.t,E3,linewidth=2,label="E");
+# _ez = plot!(sol3.t,Z3,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",xaxis="Time",label="Z")
+# savefig(_ez,dn*"GCE2_"*"$Λ"*"_ez_t.png")
+
+## tests

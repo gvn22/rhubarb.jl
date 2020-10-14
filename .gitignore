@@ -1,0 +1,3 @@
+*.gif
+tests/
+*.DS_Store

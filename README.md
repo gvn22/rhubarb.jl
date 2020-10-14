@@ -1,5 +1,4 @@
 rhubarb
 -------
 
-is a triad-based non-linear solver for dynamics on the β-plane that
-allows triad decimation rules such as GQL and GCE2 to be implemented.
+rhubarb is a spectral solver for flows on the β-plane with forcing, relaxation and hyperviscosity terms included. In addition to the fully non-linear equations, the GQL equations as well as the derived GCE2 statistical equations can be solved.

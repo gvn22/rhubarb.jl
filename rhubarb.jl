@@ -45,7 +45,7 @@ mkpath(dn)
 zones = reshape(["$i" for i = 0:1:nx-1],1,nx);
 
 P1,O1 = zonalenergy(lx,ly,nx,ny,sol1.u);
-_p = plot(sol1.t,P1,xaxis=("Time",(-1,51)),yscale=:log10,yaxis=("Energy in Zonal Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:bottomright,linewidth=1.5)
+_p = plot(sol1.t,P1,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Zonal Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:bottomright,linewidth=2)
 savefig(_p,dn*"NL_em.png");
 
 P2,O2 = zonalenergy(lx,ly,nx,ny,sol2.u);
@@ -204,7 +204,9 @@ display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progres
 prob = ODEProblem(nl_eqs3!,ζ0,tspan,p)
 display(@benchmark sol1 = solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
 
-Λ = 4
+Λ = 7
+A = acoeffs(ly,ny,Ξ,τ)
+B = bcoeffs(lx,ly,nx,ny,β,τ)
 Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
 p = [nx,ny,Λ,A,B,Cp,Cm]
 
@@ -217,9 +219,9 @@ display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progres
 
 u0 = ic_cumulants(nx,ny,Λ,ζ0)
 
-# @info "Unoptimized GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
-# prob = ODEProblem(gce2_eqs!,ic_cumulants(nx,ny,Λ,u0),tspan,p)
-# display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
-# @info "Removed dζ from GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
-# prob = ODEProblem(gce2_eqs!,ic_cumulants(nx,ny,Λ,u0),tspan,p)
-# display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+@info "Unoptimized GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
+prob = ODEProblem(gce2_eqs!,u0,tspan,p)
+display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=1000,save_start=false,save_everystep=false,saveat=20))
+@info "Removed dζ from GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
+prob = ODEProblem(gce2_eqs3!,u0,tspan,p)
+display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=1000,save_start=false,save_everystep=false,saveat=20))

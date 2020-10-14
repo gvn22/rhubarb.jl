@@ -22,23 +22,23 @@ nx = 8;
 ny = 10;
 
 Ω = 2.0*Float64(pi)
-θ = Float64(pi)/6.0
-β = 2.0*Ω*cos(θ)
+θ = Float64(pi)/3.0
+β = 2.0*Ω*sin(θ)
 Ξ = 0.2*Ω
 τ = 10.0/Ω
-Λ = 0
+Λ = 4
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
-sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,savefreq=20);
-sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0);
-sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,poscheck=false);
+sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,savefreq=1);
+sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0,savefreq=1);
+sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0,poscheck=false,savefreq=1);
 
 """ Create plots
 """
-# plotlyjs();
-pyplot();
-dn = "tests/7x11/l60j0_2t10/"
+plotlyjs();
+# pyplot();
+dn = "tests/8x10/l30j0_2t10/"
 mkpath(dn)
 
 ## Zonal energy
@@ -49,12 +49,12 @@ _p = plot(sol1.t,P1,xaxis=("Time",(-1,51)),yscale=:log10,yaxis=("Energy in Zonal
 savefig(_p,dn*"NL_em.png");
 
 P2,O2 = zonalenergy(lx,ly,nx,ny,sol2.u);
-_p = plot(sol2.t,P2,xaxis=("Time",(-1,51)),yscale=:log10,yaxis=("Energy in Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:best,linewidth=2)
-savefig(_p,dn*"GQL_"*"$Λ"*"_em.png")
+_p = plot(sol2.t,P2,xaxis=("Time",(-1,51)),yscale=:log10,yaxis=("Energy in Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
+savefig(_p,dn*"GQL_"*"$Λ"*"_em_ic1e-4_dt0_001.png")
 
 P3,O3 = zonalenergy(lx,ly,nx,ny,Λ,sol3.u);
-_p = plot(sol3.t,P3,xaxis=("Time",(-1,51)),yscale=:log10,yaxis=("Energy in Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:best,linewidth=2)
-savefig(_p,dn*"GCE2_"*"$Λ"*"_em.png");
+_p = plot(sol3.t,P3,xaxis=("Time",(-1,51)),yscale=:log10,yaxis=("Energy in Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
+savefig(_p,dn*"GCE2_"*"$Λ"*"_em_ic1e-4_dt0_01.png");
 
 ## Spatial vorticity
 xx = LinRange(-lx/2,lx/2,2*nx-1);
@@ -181,8 +181,8 @@ nx = 8;
 ny = 10;
 
 Ω = 2.0*Float64(pi)
-θ = Float64(pi)/6.0
-β = 2.0*Ω*cos(θ)
+θ = Float64(pi)/3.0
+β = 2.0*Ω*sin(θ)
 Ξ = 0.2*Ω
 τ = 10.0/Ω
 
@@ -192,7 +192,7 @@ A = acoeffs(ly,ny,Ξ,τ)
 B = bcoeffs(lx,ly,nx,ny,β,τ)
 Cp,Cm = ccoeffs(lx,ly,nx,ny)
 p = [nx,ny,A,B,Cp,Cm]
-tspan = (0.0,200.0)
+tspan = (0.0,100.0)
 
 @info "Unoptimized NL equations on $(nx-1)x$(ny-1) grid"
 prob = ODEProblem(nl_eqs!,ζ0,tspan,p)
@@ -215,7 +215,7 @@ display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progres
 prob = ODEProblem(gql_eqs2!,ζ0,tspan,p)
 display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
 
-# u0 = ic_cumulants(nx,ny,Λ,ζ0)
+u0 = ic_cumulants(nx,ny,Λ,ζ0)
 
 # @info "Unoptimized GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
 # prob = ODEProblem(gce2_eqs!,ic_cumulants(nx,ny,Λ,u0),tspan,p)

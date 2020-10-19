@@ -35,7 +35,10 @@ sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=500.0,poscheck=false);
 
 """ Create plots
 """
-plotlyjs();
+# plotlyjs();
+pyplot();
+dn = "tests/6x12/l90_j02_t20/"
+mkpath(dn)
 # pyplot();
 
 ## Zonal energy

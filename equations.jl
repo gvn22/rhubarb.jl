@@ -318,7 +318,7 @@ function gql_eqs2!(du,u,p,t)
             for m2=0:min(m1,Λ-m1)
 
                 n2min = m2 == 0 ? 1 : -(ny-1)
-                for n2=max(n2min,-(ny-1)-n1):1:min(ny-1,ny-1-n1)
+                for n2=max(n2min,-(ny-1)-n1):min(ny-1,ny-1-n1)
 
                     m::Int = m1 + m2
                     n::Int = n1 + n2
@@ -336,7 +336,7 @@ function gql_eqs2!(du,u,p,t)
 
                 n2min = m2 == 0 ? 1 : -(ny-1)
                 n2max = m2 == m1 ? n1 - 1 : ny-1
-                for n2=max(n2min,n1-(ny-1)):1:min(n2max,n1+ny-1)
+                for n2=max(n2min,n1-(ny-1)):min(n2max,n1+ny-1)
 
                     m::Int = m1 - m2
                     n::Int = n1 - n2
@@ -349,7 +349,7 @@ function gql_eqs2!(du,u,p,t)
 
     # H - H = L
     for m1=Λ+1:nx-1
-        for n1=-(nx-1):1:ny-1
+        for n1=-(ny-1):ny-1
             for m2=max(Λ+1,m1-Λ):m1
 
                 n2max = m2 == m1 ? n1 - 1 : ny-1
@@ -370,7 +370,7 @@ function gql_eqs2!(du,u,p,t)
             for m2=0:min(nx-1-m1,Λ)
 
                 n2min = m2 == 0 ? 1 : -(ny-1)
-                for n2=max(n2min,-(ny-1)-n1):1:min(ny-1,ny-1-n1)
+                for n2=max(n2min,-(ny-1)-n1):min(ny-1,ny-1-n1)
 
                     m::Int = m1 + m2
                     n::Int = n1 + n2

@@ -100,7 +100,7 @@ function zonalvelocity(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{
 end
 
 ## Energy for NL/GQL
-function zonalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{Array{ComplexF64,2},1})
+function e_lohi(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{Array{ComplexF64,2},1})
     e_lo = zeros(Float64,length(u))
     e_hi = fill!(similar(e_lo),0)
     for i in eachindex(u)
@@ -124,7 +124,7 @@ function zonalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{Ar
     e_lo,e_hi
 end
 
-function zonalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{Float64},Tuple{Array{Complex{Float64},2},Array{Complex{Float64},4}}},1})
+function e_lohi(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{ArrayPartition{Complex{Float64},Tuple{Array{Complex{Float64},2},Array{Complex{Float64},4}}},1})
     e_lo = zeros(Float64,length(u))
     e_hi = fill!(similar(e_lo),0)
     for i in eachindex(u)

@@ -22,38 +22,38 @@ nx = 8;
 ny = 10;
 
 Ω = 2.0*Float64(pi)
-θ = Float64(pi)/3.0
+θ = Float64(pi)/2.0
 β = 2.0*Ω*sin(θ)
-Ξ = 0.2*Ω
-τ = 10.0/Ω
-Λ = 1
+Ξ = 0.3*Ω
+τ = 20.0/Ω
+Λ = 3
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
-@time sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,savefreq=5);
-@time sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,t_end=200.0,savefreq=5);
-@time sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,poscheck=false,savefreq=5);
+@time sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0,savefreq=5);
+@time sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,dt=0.001,ic=ζ0,t_end=200.0,savefreq=5);
+@time sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0,poscheck=false,savefreq=5);
 
 """ Create plots
 """
 # plotlyjs();
 pyplot();
-dn = "tests/8x10/l30j0_2t10_rerun/"
+dn = "tests/8x10/l90j0_3t20/"
 mkpath(dn)
 
 ## Zonal energy
 zones = reshape(["$i" for i = 0:1:nx-1],1,nx);
 
 P1,O1 = zonalenergy(lx,ly,nx,ny,sol1.u);
-_p = plot(sol1.t,P1,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Zonal Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:bottomright,linewidth=2)
-savefig(_p,dn*"NL_em_dt001.png");
+_p = plot(sol1.t,P1,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Zonal Mode",(1e-6,1e3)),labels=zones,palette=:tab10,legend=:bottomright,linewidth=2)
+savefig(_p,dn*"NL_em.png");
 
 P2,O2 = zonalenergy(lx,ly,nx,ny,sol2.u);
-_p = plot(sol2.t,P2,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
+_p = plot(sol2.t,P2,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-6,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
 savefig(_p,dn*"GQL_"*"$Λ"*"_em.png")
 
 P3,O3 = zonalenergy(lx,ly,nx,ny,Λ,sol3.u);
-_p = plot(sol3.t,P3,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
+_p = plot(sol3.t,P3,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-6,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
 savefig(_p,dn*"GCE2_"*"$Λ"*"_em.png");
 
 ## Spatial vorticity
@@ -112,14 +112,14 @@ _ef = plot(mm,nn,ef[:,:,end],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
 savefig(_a,dn*"NL_ef.png")
 
 ef = fourierenergy(lx,ly,nx,ny,sol2.u)
-_ef = plot(mm,nn,ef[:,:,begin],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
-_ef = plot(mm,nn,ef[:,:,end],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
+_ef = plot(mm,nn,ef[:,:,begin]',st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
+_ef = plot(mm,nn,ef[:,:,end]',st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
 savefig(_a,dn*"GQL_"*"$Λ"*"_ef.png")
 
 ef = fourierenergy(lx,ly,nx,ny,Λ,sol3.u)
 _ef = plot(mm,nn,ef[:,:,begin],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
 _ef = plot(mm,nn,ef[:,:,end],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
-_ef = plot(sol3.t,mm,ef[ny-1,:,:],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
+_ef = plot(sol3.t,mm,ef[ny,:,:],st=:contourf,color=:haline,xaxis="t",yaxis="ky")
 
 savefig(_a,dn*"GQL_"*"$Λ"*"_ef.png")
 
@@ -175,56 +175,56 @@ _ez = plot!(sol1.t,Z1,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",xaxis="
 # savefig(_m,dn*"GCE2_"*"$Λ"*"_m_t.png")
 
 ## tests
-lx = 4.0*Float64(pi);
-ly = 2.0*Float64(pi);
-nx = 8;
-ny = 10;
-
-Ω = 2.0*Float64(pi)
-θ = Float64(pi)/3.0
-β = 2.0*Ω*sin(θ)
-Ξ = 0.2*Ω
-τ = 10.0/Ω
-
-ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
-
-A = acoeffs(ly,ny,Ξ,τ)
-B = bcoeffs(lx,ly,nx,ny,β,τ)
-Cp,Cm = ccoeffs(lx,ly,nx,ny)
-p = [nx,ny,A,B,Cp,Cm]
-tspan = (0.0,100.0)
-
-@info "Unoptimized NL equations on $(nx-1)x$(ny-1) grid"
-prob = ODEProblem(nl_eqs!,ζ0,tspan,p)
-display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
-@info "Removed dζ from NL equations on $(nx-1)x$(ny-1) grid"
-prob = ODEProblem(nl_eqs2!,ζ0,tspan,p)
-display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
-@info "Running that using @views"
-prob = ODEProblem(nl_eqs3!,ζ0,tspan,p)
-display(@benchmark sol1 = solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
-
-Λ = 4
-A = acoeffs(ly,ny,Ξ,τ)
-B = bcoeffs(lx,ly,nx,ny,β,τ)
-Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
-p = [nx,ny,Λ,A,B,Cp,Cm]
-
-@info "Unoptimized GQL equations on $(nx-1)x$(ny-1) grid"
-prob = ODEProblem(gql_eqs!,ζ0,tspan,p)
-display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
-@info "Optimized GQL equations on $(nx-1)x$(ny-1) grid"
-prob = ODEProblem(gql_eqs2!,ζ0,tspan,p)
-display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
-
-u0 = ic_cumulants(nx,ny,Λ,ζ0)
-
-@info "Unoptimized GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
-prob = ODEProblem(gce2_eqs!,u0,tspan,p)
-display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=1000,save_start=false,save_everystep=false,saveat=20))
-@info "Removed dζ from GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
-prob = ODEProblem(gce2_eqs2!,u0,tspan,p)
-display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=1000,save_start=false,save_everystep=false,saveat=20))
-@info "Removed dθ from GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
-prob = ODEProblem(gce2_eqs3!,u0,tspan,p)
-display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=1000,save_start=false,save_everystep=false,saveat=20))
+# lx = 4.0*Float64(pi);
+# ly = 2.0*Float64(pi);
+# nx = 8;
+# ny = 10;
+#
+# Ω = 2.0*Float64(pi)
+# θ = Float64(pi)/3.0
+# β = 2.0*Ω*sin(θ)
+# Ξ = 0.2*Ω
+# τ = 10.0/Ω
+#
+# ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
+#
+# A = acoeffs(ly,ny,Ξ,τ)
+# B = bcoeffs(lx,ly,nx,ny,β,τ)
+# Cp,Cm = ccoeffs(lx,ly,nx,ny)
+# p = [nx,ny,A,B,Cp,Cm]
+# tspan = (0.0,100.0)
+#
+# @info "Unoptimized NL equations on $(nx-1)x$(ny-1) grid"
+# prob = ODEProblem(nl_eqs!,ζ0,tspan,p)
+# display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+# @info "Removed dζ from NL equations on $(nx-1)x$(ny-1) grid"
+# prob = ODEProblem(nl_eqs2!,ζ0,tspan,p)
+# display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+# @info "Running that using @views"
+# prob = ODEProblem(nl_eqs3!,ζ0,tspan,p)
+# display(@benchmark sol1 = solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+#
+# Λ = 4
+# A = acoeffs(ly,ny,Ξ,τ)
+# B = bcoeffs(lx,ly,nx,ny,β,τ)
+# Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
+# p = [nx,ny,Λ,A,B,Cp,Cm]
+#
+# @info "Unoptimized GQL equations on $(nx-1)x$(ny-1) grid"
+# prob = ODEProblem(gql_eqs!,ζ0,tspan,p)
+# display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+# @info "Optimized GQL equations on $(nx-1)x$(ny-1) grid"
+# prob = ODEProblem(gql_eqs2!,ζ0,tspan,p)
+# display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=10000,save_start=false,save_everystep=false,saveat=20))
+#
+# u0 = ic_cumulants(nx,ny,Λ,ζ0)
+#
+# @info "Unoptimized GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
+# prob = ODEProblem(gce2_eqs!,u0,tspan,p)
+# display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=1000,save_start=false,save_everystep=false,saveat=20))
+# @info "Removed dζ from GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
+# prob = ODEProblem(gce2_eqs2!,u0,tspan,p)
+# display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=1000,save_start=false,save_everystep=false,saveat=20))
+# @info "Removed dθ from GCE2($Λ) equations on $(nx-1)x$(ny-1) grid"
+# prob = ODEProblem(gce2_eqs3!,u0,tspan,p)
+# display(@benchmark solve(prob,RK4(),dt=0.01,adaptive=false,progress=true,progress_steps=1000,save_start=false,save_everystep=false,saveat=20))

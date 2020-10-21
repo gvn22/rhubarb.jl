@@ -26,7 +26,7 @@ ny = 10;
 β = 2.0*Ω*sin(θ)
 Ξ = 0.3*Ω
 τ = 20.0/Ω
-Λ = 3
+Λ = 1
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
@@ -38,7 +38,7 @@ ny = 10;
 """
 # plotlyjs();
 pyplot();
-dn = "tests/6x12/l90_j03_t20/"
+dn = "tests/8x10/l90j03t20/"
 mkpath(dn)
 
 ## Zonal energy
@@ -112,41 +112,42 @@ _ef = plot(mm,nn,ef[:,:,end],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
 savefig(_a,dn*"NL_ef.png")
 
 ef = fourierenergy(lx,ly,nx,ny,sol2.u)
-_ef = plot(mm,nn,ef[:,:,begin]',st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
-_ef = plot(mm,nn,ef[:,:,end]',st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
+_ef = plot(mm,nn,ef[:,:,begin],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
+_ef = plot(mm,nn,ef[:,:,end],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
 savefig(_a,dn*"GQL_"*"$Λ"*"_ef.png")
 
 ef = fourierenergy(lx,ly,nx,ny,Λ,sol3.u)
 _ef = plot(mm,nn,ef[:,:,begin],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
 _ef = plot(mm,nn,ef[:,:,end],st=:contourf,color=:haline,xaxis="kx",yaxis="ky")
-_ef = plot(sol3.t,mm,ef[ny,:,:],st=:contourf,color=:haline,xaxis="t",yaxis="ky")
-
-savefig(_a,dn*"GQL_"*"$Λ"*"_ef.png")
+savefig(_a,dn*"GCE2_"*"$Λ"*"_ef.png")
 
 ## Zonal velocity
 uz = zonalvelocity(lx,ly,nx,ny,sol1.u)
-plot(uz[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+_u = plot(uz[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+savefig(_u,dn*"NL_zv.png")
 
 uz = zonalvelocity(lx,ly,nx,ny,sol2.u)
-plot(uz[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+_u = plot(uz[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+savefig(_u,dn*"GQL_"*"$Λ"*"_zv.png")
 
 uz = zonalvelocity(lx,ly,nx,ny,Λ,sol3.u)
-plot(uz[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+_u = plot(uz[:,:,end],st=:contourf,color=:bwr,xaxis="x",yaxis="y")
+savefig(_u,dn*"GCE2_"*"$Λ"*"_zv.png")
 
 ## Energy & enstropy
-e_zon,e_turb = e_lohi(lx,ly,nx,ny,Λ,sol1.u)
-_ezt = plot(sol1.t,e_zon,linewidth=2,label="Zonal");
-_ezt = plot!(sol1.t,e_turb,linewidth=2,legend=:best,yaxis="Energy",xaxis="Time",label="Turbulence")
-plot(e_zon,e_turb)
-
-e_zon,e_turb = e_lohi(lx,ly,nx,ny,Λ,sol2.u)
-_ezt = plot(sol2.t,e_zon,linewidth=2,label="Zonal");
-_ezt = plot!(sol2.t,e_turb,linewidth=2,legend=:best,yaxis="Energy",xaxis="Time",label="Turbulence")
-plot(e_zon,e_turb)
-
-E1,Z1 = energy(lx,ly,nx,ny,sol1.u);
-_ez = plot(sol1.t,E1,linewidth=2,label="E");
-_ez = plot!(sol1.t,Z1,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",xaxis="Time",label="Z")
+# e_zon,e_turb = e_lohi(lx,ly,nx,ny,Λ,sol1.u)
+# _ezt = plot(sol1.t,e_zon,linewidth=2,label="Zonal");
+# _ezt = plot!(sol1.t,e_turb,linewidth=2,legend=:best,yaxis="Energy",xaxis="Time",label="Turbulence")
+# plot(e_zon,e_turb)
+#
+# e_zon,e_turb = e_lohi(lx,ly,nx,ny,Λ,sol2.u)
+# _ezt = plot(sol2.t,e_zon,linewidth=2,label="Zonal");
+# _ezt = plot!(sol2.t,e_turb,linewidth=2,legend=:best,yaxis="Energy",xaxis="Time",label="Turbulence")
+# plot(e_zon,e_turb)
+#
+# E1,Z1 = energy(lx,ly,nx,ny,sol1.u);
+# _ez = plot(sol1.t,E1,linewidth=2,label="E");
+# _ez = plot!(sol1.t,Z1,linewidth=2,legend=:right,yaxis="Energy,Enstrophy",xaxis="Time",label="Z")
 # savefig(_ez,dn*"NL_ez_t.png");
 
 # E2,Z2 = energy(lx,ly,nx,ny,sol2.u)

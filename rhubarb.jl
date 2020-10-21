@@ -38,9 +38,8 @@ ny = 10;
 """
 # plotlyjs();
 pyplot();
-dn = "tests/6x12/l90_j02_t20/"
+dn = "tests/6x12/l90_j03_t20/"
 mkpath(dn)
-# pyplot();
 
 ## Zonal energy
 zones = reshape(["$i" for i = 0:1:nx-1],1,nx);

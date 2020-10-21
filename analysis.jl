@@ -174,6 +174,7 @@ function fourierenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{
                 kx = 2.0*Float64(pi)/lx*m1
                 ky = 2.0*Float64(pi)/ly*n1
                 E[n1 + ny,m1+nx,i] += abs(u[i].x[1][n1 + ny,m1 + 1])^2/(kx^2 + ky^2)
+                E[-n1 + ny,-m1+nx,i] = E[n1 + ny,m1+nx,i]
             end
         end
         for m1 = Λ+1:1:nx-1
@@ -181,6 +182,7 @@ function fourierenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{
                 kx = 2.0*Float64(pi)/lx*m1
                 ky = 2.0*Float64(pi)/ly*n1
                 E[n1 + ny,m1+nx,i] += abs(u[i].x[2][n1 + ny,m1 - Λ,n1 + ny,m1 - Λ])/(kx^2 + ky^2)
+                E[-n1 + ny,-m1+nx,i] = E[n1 + ny,m1+nx,i]
             end
         end
     end

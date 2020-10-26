@@ -168,6 +168,67 @@ function nl_eqs3!(du,u,p,t)
     nothing
 end
 
+function nl_eqs4!(du,u,p,t)
+
+    nx::Int,ny::Int,A::Array{ComplexF64,1},B::Array{ComplexF64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
+
+    du .= 0.0 + 0.0im
+    # @views du[ny:end,1] = A[ny:end]
+
+    # constant terms
+    @inbounds for n=1:1:ny-1
+
+        du[n+ny,1] += A[n+ny]
+
+    end
+
+    # linear terms
+    @inbounds for m = 0:nx-1
+        nmin = m == 0 ? 1 : -(ny-1)
+        @inbounds for n=nmin:ny-1
+
+            du[n+ny,m+1] += B[n+ny,m+1]*u[n+ny,m+1]
+
+        end
+    end
+
+    # ++ interactions
+    @inbounds for m1=1:nx-1
+        @inbounds for n1=-(ny-1):ny-1
+            @inbounds for m2=0:min(m1,nx-1-m1)
+
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                @inbounds for n2=max(n2min,-(ny-1)-n1):min(ny-1,ny-1-n1)
+
+                    m::Int = m1 + m2
+                    n::Int = n1 + n2
+                    du[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
+
+                end
+            end
+        end
+    end
+
+    # +- interactions
+    @inbounds for m1=1:nx-1
+        @inbounds for n1=-(ny-1):ny-1
+            @inbounds for m2=0:m1
+
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                n2max = m2 == m1 ? n1 - 1 : ny-1
+                @inbounds for n2=max(n2min,n1-(ny-1)):min(n2max,n1+ny-1)
+
+                    m::Int = m1 - m2
+                    n::Int = n1 - n2
+                    du[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
+
+                end
+            end
+        end
+    end
+    nothing
+end
+
 function gql_eqs!(du,u,p,t)
 
     nx::Int,ny::Int,Λ::Int,A::Array{ComplexF64,1},B::Array{ComplexF64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
@@ -392,6 +453,228 @@ function gql_eqs2!(du,u,p,t)
                     m::Int = m1 - m2
                     n::Int = n1 - n2
                     @views du[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
+
+                end
+            end
+        end
+    end
+    nothing
+end
+
+function gql_eqs3!(du,u,p,t)
+
+    nx::Int,ny::Int,Λ::Int,A::Array{ComplexF64,1},B::Array{ComplexF64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
+
+    du .= 0.0 + 0.0im
+
+    # constant terms
+    for n=1:ny-1
+
+        du[n+ny,1] += A[n+ny]
+
+    end
+
+    # linear terms
+    for m = 0:nx-1
+        nmin = m == 0 ? 1 : -(ny-1)
+        for n=nmin:ny-1
+
+            du[n+ny,m+1] += B[n+ny,m+1]*u[n+ny,m+1]
+
+        end
+    end
+
+    # L + L = L
+    for m1=1:Λ
+        for n1=-(ny-1):ny-1
+            for m2=0:min(m1,Λ-m1)
+
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                for n2=max(n2min,-(ny-1)-n1):min(ny-1,ny-1-n1)
+
+                    m::Int = m1 + m2
+                    n::Int = n1 + n2
+                    du[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
+
+                end
+            end
+        end
+    end
+
+    # L - L = L
+    for m1=1:Λ
+        for n1=-(ny-1):ny-1
+            for m2=0:m1
+
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                n2max = m2 == m1 ? n1 - 1 : ny-1
+                for n2=max(n2min,n1-(ny-1)):min(n2max,n1+ny-1)
+
+                    m::Int = m1 - m2
+                    n::Int = n1 - n2
+                    du[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
+
+                end
+            end
+        end
+    end
+
+    # H - H = L
+    for m1=Λ+1:nx-1
+        for n1=-(ny-1):ny-1
+            for m2=max(Λ+1,m1-Λ):m1
+
+                n2max = m2 == m1 ? n1 - 1 : ny-1
+                for n2=max(-(ny-1),n1-(ny-1)):min(n2max,n1+ny-1)
+
+                    m::Int = m1 - m2
+                    n::Int = n1 - n2
+                    du[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
+
+                end
+            end
+        end
+    end
+
+    # H + L = H
+    for m1=Λ+1:nx-1
+        for n1=-(ny-1):ny-1
+            for m2=0:min(nx-1-m1,Λ)
+
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                for n2=max(n2min,-(ny-1)-n1):min(ny-1,ny-1-n1)
+
+                    m::Int = m1 + m2
+                    n::Int = n1 + n2
+                    du[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
+
+                end
+            end
+        end
+    end
+
+    # H - L = H
+    for m1=Λ+1:nx-1
+        for n1=-(ny-1):ny-1
+            for m2=0:1:min(Λ,m1 - Λ - 1)
+
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                for n2=max(n2min,n1-(ny-1)):1:min(ny-1,n1+ny-1)
+
+                    m::Int = m1 - m2
+                    n::Int = n1 - n2
+                    du[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
+
+                end
+            end
+        end
+    end
+    nothing
+end
+
+function gql_eqs4!(du,u,p,t)
+
+    nx::Int,ny::Int,Λ::Int,A::Array{ComplexF64,1},B::Array{ComplexF64,2},Cp::Array{Float64,4},Cm::Array{Float64,4} = p
+
+    du .= 0.0 + 0.0im
+
+    # constant terms
+    @inbounds for n=1:ny-1
+
+        du[n+ny,1] += A[n+ny]
+
+    end
+
+    # linear terms
+    @inbounds for m = 0:nx-1
+        nmin = m == 0 ? 1 : -(ny-1)
+        @inbounds for n=nmin:ny-1
+
+            du[n+ny,m+1] += B[n+ny,m+1]*u[n+ny,m+1]
+
+        end
+    end
+
+    # L + L = L
+    @inbounds for m1=1:Λ
+        @inbounds for n1=-(ny-1):ny-1
+            @inbounds for m2=0:min(m1,Λ-m1)
+
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                @inbounds for n2=max(n2min,-(ny-1)-n1):min(ny-1,ny-1-n1)
+
+                    m::Int = m1 + m2
+                    n::Int = n1 + n2
+                    du[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
+
+                end
+            end
+        end
+    end
+
+    # L - L = L
+    for m1=1:Λ
+        for n1=-(ny-1):ny-1
+            for m2=0:m1
+
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                n2max = m2 == m1 ? n1 - 1 : ny-1
+                for n2=max(n2min,n1-(ny-1)):min(n2max,n1+ny-1)
+
+                    m::Int = m1 - m2
+                    n::Int = n1 - n2
+                    du[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
+
+                end
+            end
+        end
+    end
+
+    # H - H = L
+    @inbounds for m1=Λ+1:nx-1
+        @inbounds for n1=-(ny-1):ny-1
+            @inbounds for m2=max(Λ+1,m1-Λ):m1
+
+                n2max = m2 == m1 ? n1 - 1 : ny-1
+                @inbounds for n2=max(-(ny-1),n1-(ny-1)):min(n2max,n1+ny-1)
+
+                    m::Int = m1 - m2
+                    n::Int = n1 - n2
+                    du[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
+
+                end
+            end
+        end
+    end
+
+    # H + L = H
+    @inbounds for m1=Λ+1:nx-1
+        @inbounds for n1=-(ny-1):ny-1
+            @inbounds for m2=0:min(nx-1-m1,Λ)
+
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                @inbounds for n2=max(n2min,-(ny-1)-n1):min(ny-1,ny-1-n1)
+
+                    m::Int = m1 + m2
+                    n::Int = n1 + n2
+                    du[n+ny,m+1] += Cp[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*u[n2+ny,m2+1]
+
+                end
+            end
+        end
+    end
+
+    # H - L = H
+    @inbounds for m1=Λ+1:nx-1
+        @inbounds for n1=-(ny-1):ny-1
+            @inbounds for m2=0:1:min(Λ,m1 - Λ - 1)
+
+                n2min = m2 == 0 ? 1 : -(ny-1)
+                @inbounds for n2=max(n2min,n1-(ny-1)):1:min(ny-1,n1+ny-1)
+
+                    m::Int = m1 - m2
+                    n::Int = n1 - n2
+                    du[n+ny,m+1] += Cm[n2+ny,m2+1,n1+ny,m1+1]*u[n1+ny,m1+1]*conj(u[n2+ny,m2+1])
 
                 end
             end

@@ -41,8 +41,8 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Fl
         condition(u,t,integrator) = t ∈ poschecktimes && !ispositive(u.x[2],nx,ny,Λ)
         affect!(integrator) = positivity!(integrator.u.x[2],nx,ny,Λ)
         cb = DiscreteCallback(condition,affect!,save_positions=(false,false))
-        solve(prob,RK4(),callback=cb,tstops=poschecktimes,dt=dt,adaptive=false,progress=true,progress_steps=2000,save_start=true,save_everystep=false,dense=false,saveat=savefreq)
+        solve(prob,RK4(),callback=cb,tstops=poschecktimes,dt=dt,adaptive=false,progress=true,progress_steps=10000,save_start=true,save_everystep=false,dense=false,saveat=savefreq)
     else
-        solve(prob,RK4(),dt=dt,adaptive=false,progress=true,progress_steps=1000,save_start=true,save_everystep=false,saveat=savefreq)
+        solve(prob,RK4(),dt=dt,adaptive=false,progress=true,progress_steps=10000,save_start=true,save_everystep=false,saveat=savefreq)
     end
 end

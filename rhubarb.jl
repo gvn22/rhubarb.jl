@@ -23,42 +23,42 @@ include("analysis.jl")
 """
 lx = 4.0*Float64(pi);
 ly = 2.0*Float64(pi);
-nx = 8;
-ny = 10;
+nx = 6;
+ny = 6;
 
 Ω = 2.0*Float64(pi)
-θ = Float64(pi)/2.0
-β = 2.0*Ω*sin(θ)
-Ξ = 0.3*Ω
+θ = 0.0
+β = 2.0*Ω*cos(θ)
+Ξ = 0.25*Ω
 τ = 20.0/Ω
-Λ = 4
+Λ = 1
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
-@time sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0,savefreq=5);
-@time sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,dt=0.001,ic=ζ0,t_end=200.0,savefreq=5);
-@time sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0,poscheck=false,savefreq=5);
+@time sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0,savefreq=20);
+@time sol2 = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,dt=0.001,ic=ζ0,t_end=200.0,savefreq=10);
+@time sol3 = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0,poscheck=false,savefreq=10);
 
 """ Create plots
 """
 # plotlyjs();
 pyplot();
-dn = "tests/8x10/l90j03t20/"
+dn = "tests/10x12/l90j025t20/"
 mkpath(dn)
 
 ## Zonal energy
 zones = reshape(["$i" for i = 0:1:nx-1],1,nx);
 
 P1,O1 = zonalenergy(lx,ly,nx,ny,sol1.u);
-_p = plot(sol1.t,P1,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Zonal Mode",(1e-6,1e3)),labels=zones,palette=:tab10,legend=:bottomright,linewidth=2)
+_p = plot(sol1.t,P1,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Zonal Mode",(1e-9,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
 savefig(_p,dn*"NL_em.png");
 
 P2,O2 = zonalenergy(lx,ly,nx,ny,sol2.u);
-_p = plot(sol2.t,P2,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-6,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
+_p = plot(sol2.t,P2,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Zonal Mode",(1e-9,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
 savefig(_p,dn*"GQL_"*"$Λ"*"_em.png")
 
 P3,O3 = zonalenergy(lx,ly,nx,ny,Λ,sol3.u);
-_p = plot(sol3.t,P3,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Mode",(1e-6,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
+_p = plot(sol3.t,P3,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Zonal Mode",(1e-9,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
 savefig(_p,dn*"GCE2_"*"$Λ"*"_em.png");
 
 ## Spatial vorticity

@@ -5,6 +5,11 @@ using FFTW
 using LinearAlgebra
 using Plots: plot,plot!,plotlyjs,pyplot,savefig
 using BenchmarkTools
+
+using Logging: global_logger
+using TerminalLoggers: TerminalLogger
+global_logger(TerminalLogger())
+
 # ENV["JULIA_DEBUG"] = Main
 
 include("coefficients.jl")

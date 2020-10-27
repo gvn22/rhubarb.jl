@@ -34,10 +34,10 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Fl
     @info "Solving GCE2 equations on $(nx-1)x$(ny-1) grid with Λ = $Λ"
     tspan = (0.0,t_end)
     u0 = ic_cumulants(nx,ny,Λ,ic)
-    dx = fill!(similar(u0.x[1]),0)
-    dy = fill!(similar(u0.x[2]),0)
-    temp = fill!(similar(u0.x[2]),0)
-    p = [nx,ny,Λ,A,B,Cp,Cm,dx,dy,temp]
+    # dx = fill!(similar(u0.x[1]),0)
+    # dy = fill!(similar(u0.x[2]),0)
+    # temp = fill!(similar(u0.x[2]),0)
+    p = [nx,ny,Λ,A,B,Cp,Cm,fill!(similar(u0.x[1]),0),fill!(similar(u0.x[2]),0),fill!(similar(u0.x[2]),0)]
     prob = ODEProblem(gce2_eqs5!,u0,tspan,p)
     if poscheck && Λ < nx - 1
         poschecktimes = [tt for tt in range(1.0,t_end,step=poscheckfreq)]

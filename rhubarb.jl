@@ -24,7 +24,7 @@ include("analysis.jl")
 lx = 4.0*Float64(pi);
 ly = 2.0*Float64(pi);
 nx = 8;
-ny = 10;
+ny = 14;
 
 Ω = 2.0*Float64(pi)
 # θ = 0.0
@@ -36,19 +36,19 @@ ny = 10;
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
-@time sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,savefreq=10);
-@time sol2a = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,dt=0.01,ic=ζ0,t_end=200.0,savefreq=5);
-@time sol2 = gql_etd(lx,ly,nx,ny,Λ,Ξ,β,τ,dt=0.01,ic=ζ0,t_end=200.0,savefreq=5);
+# @time sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,savefreq=10);
+@time sol2a = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,dt=0.001,ic=ζ0,t_end=200.0,savefreq=5);
+@time sol2 = gql_etd(lx,ly,nx,ny,Λ,Ξ,β,τ,dt=0.001,ic=ζ0,t_end=200.0,savefreq=5);
 
-@time sol3a = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,poscheck=false,savefreq=5);
-@time sol3 = gce2_etd(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,poscheck=false,savefreq=5);
+@time sol3a = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0,poscheck=false,savefreq=5);
+@time sol3 = gce2_etd(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0,poscheck=false,savefreq=5);
 
 """ Create plots
 """
 # plotlyjs();
 pyplot();
-dn = "tests/8x10/l30j0_2t10_rerun/"
-# mkpath(dn)
+dn = "tests/8x14/l30j0_2t10/"
+mkpath(dn)
 
 ## Zonal energy
 zones = reshape(["$i" for i = 0:1:nx-1],1,nx);
@@ -59,19 +59,19 @@ savefig(_p,dn*"NL_em.png");
 
 P2,O2 = zonalenergy(lx,ly,nx,ny,sol2a.u);
 _p = plot(sol2a.t,P2,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Zonal Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
-savefig(_p,dn*"GQL_"*"$Λ"*"_em_jw0_05_dt01.png")
+savefig(_p,dn*"GQL_"*"$Λ"*"_jw0_05_dt001.png")
 
 P2,O2 = zonalenergy(lx,ly,nx,ny,sol2.u);
 _p = plot(sol2.t,P2,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Zonal Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
-savefig(_p,dn*"GQL_"*"$Λ"*"_em_etdrk4_jw0_05_dt01.png")
+savefig(_p,dn*"GQL_"*"$Λ"*"_etdrk4_jw0_2_dt005.png")
 
 P3,O3 = zonalenergy(lx,ly,nx,ny,Λ,sol3a.u);
 _p = plot(sol3a.t,P3,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Zonal Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
-savefig(_p,dn*"GCE2_"*"$Λ"*"_em_jw0_05_dt01.png");
+savefig(_p,dn*"GCE2_"*"$Λ"*"_em_jw0_025_dt001.png");
 
 P3,O3 = zonalenergy(lx,ly,nx,ny,Λ,sol3.u);
 _p = plot(sol3.t,P3,xaxis=("Time"),yscale=:log10,yaxis=("Energy in Zonal Mode",(1e-12,1e3)),labels=zones,palette=:tab10,legend=:outerright,linewidth=2)
-savefig(_p,dn*"GCE2_"*"$Λ"*"_em_etdrk4_jw0_05_dt01.png");
+savefig(_p,dn*"GCE2_"*"$Λ"*"_etdrk4_jw0_025_dt001.png");
 
 ## Spatial vorticity
 xx = LinRange(-lx/2,lx/2,2*nx-1);

@@ -36,11 +36,11 @@ ny = 14;
 
 ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
 
-# @time sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,savefreq=10);
-@time sol2a = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,dt=0.005,ic=ζ0,t_end=200.0,savefreq=5);
+@time sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.01,t_end=200.0,savefreq=10);
+@time sol2a = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,dt=0.005,ts_alg=BS3,ic=ζ0,t_end=200.0,savefreq=5);
 @time sol2 = gql_etd(lx,ly,nx,ny,Λ,Ξ,β,τ,dt=0.005,ic=ζ0,t_end=200.0,savefreq=5);
 
-@time sol3a = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0,poscheck=false,savefreq=5);
+@time sol3a = gce2(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,ts_alg=RK4,dt=0.001,t_end=200.0,poscheck=false,savefreq=5);
 @time sol3 = gce2_etd(lx,ly,nx,ny,Λ,Ξ,β,τ,ic=ζ0,dt=0.001,t_end=200.0,poscheck=false,savefreq=5);
 
 """ Create plots

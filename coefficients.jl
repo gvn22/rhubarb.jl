@@ -1,4 +1,4 @@
-function acoeffs(ly::Float64,ny::Int,Ξ::Float64,τ::Float64=0.0;jw::Float64)
+function acoeffs(ly::Float64,ny::Int,Ξ::Float64,τ::Float64=0.0;jw::Float64=0.05)
     ζjet = zeros(Float64,2*ny-1)
     # Δθ::Float64 = 0.025*ly/Float64(pi)
     Δθ::Float64 = jw

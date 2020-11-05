@@ -34,7 +34,7 @@ ny = 14;
 τ = 10.0/Ω
 Λ = 4
 
-ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ); # one ic for all
+ζ0 = ic_pert_eqm(lx,ly,nx,ny,Ξ,jw=0.05); # one ic for all
 
 @time sol1 = nl(lx,ly,nx,ny,Ξ,β,τ,ic=ζ0,dt=0.005,t_end=200.0,savefreq=10);
 @time sol2a = gql(lx,ly,nx,ny,Λ,Ξ,β,τ,dt=0.005,ts_alg=RK4,ic=ζ0,t_end=200.0,savefreq=5);

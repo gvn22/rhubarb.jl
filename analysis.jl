@@ -304,6 +304,32 @@ function modalstrength(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,u::Array{
 end
 
 ## zonal energy
+function zonalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF64,1},1})
+
+    P = zeros(Float64,length(u),nx)
+    O = fill!(similar(P),0)
+
+    for i in eachindex(u)
+
+        A = reshape(u[i],2*ny-1,nx)
+        
+        for m1 = 0:1:nx-1
+            n1min = m1 == 0 ? 1 : -(ny-1)
+            for n1 = n1min:1:ny-1
+
+                kx = 2.0*Float64(pi)/lx*m1
+                ky = 2.0*Float64(pi)/ly*n1
+
+                P[i,m1+1] += abs(A[n1 + ny,m1 + 1])^2/(kx^2 + ky^2)
+                O[i,m1+1] += abs(A[n1 + ny,m1 + 1])^2
+
+            end
+        end
+
+    end
+    P,O
+end
+
 function zonalenergy(lx::Float64,ly::Float64,nx::Int,ny::Int,u::Array{Array{ComplexF64,2},1})
 
     P = zeros(Float64,length(u),nx)

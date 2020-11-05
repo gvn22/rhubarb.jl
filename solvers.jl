@@ -1,7 +1,7 @@
 ## NL
 function nl(lx::Float64,ly::Float64,nx::Int,ny::Int,Ξ::Float64,β::Float64,τ::Float64=0.0,
-    νn::Float64=0.0;ic::Array{ComplexF64,2},dt::Float64=0.01,t_end::Float64=1000.0,savefreq::Int=20,kwargs...)
-    A = acoeffs(ly,ny,Ξ,τ)
+    νn::Float64=0.0;jw::Float64=0.05,ic::Array{ComplexF64,2},dt::Float64=0.01,t_end::Float64=1000.0,savefreq::Int=20,kwargs...)
+    A = acoeffs(ly,ny,Ξ,τ,jw=jw)
     B = bcoeffs(lx,ly,nx,ny,β,τ,νn)
     Cp,Cm = ccoeffs(lx,ly,nx,ny)
     p = [nx,ny,A,B,Cp,Cm]
@@ -13,8 +13,8 @@ end
 
 ## GQL
 function gql(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Float64,τ::Float64=0.0,
-    νn::Float64=0.0;ic::Array{ComplexF64,2},dt::Float64=0.01,t_end::Float64=1000.0,savefreq::Int=20,kwargs...)
-    A = acoeffs(ly,ny,Ξ,τ)
+    νn::Float64=0.0;jw::Float64=0.05,ic::Array{ComplexF64,2},dt::Float64=0.01,t_end::Float64=1000.0,savefreq::Int=20,kwargs...)
+    A = acoeffs(ly,ny,Ξ,τ,jw=jw)
     B = bcoeffs(lx,ly,nx,ny,β,τ,νn)
     Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
     p = [nx,ny,Λ,A,B,Cp,Cm]
@@ -25,8 +25,8 @@ function gql(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Flo
 end
 
 function gql_etd(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Float64,τ::Float64=0.0,
-    νn::Float64=0.0;ic::Array{ComplexF64,2},dt::Float64=0.01,t_end::Float64=1000.0,savefreq::Int=20,kwargs...)
-    A = acoeffs(ly,ny,Ξ,τ)
+    νn::Float64=0.0;jw::Float64=0.05,ic::Array{ComplexF64,2},dt::Float64=0.01,t_end::Float64=1000.0,savefreq::Int=20,kwargs...)
+    A = acoeffs(ly,ny,Ξ,τ,jw=jw)
     B = bcoeffs(lx,ly,nx,ny,β,τ,νn)
     Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
     tspan = (0.0,t_end)
@@ -40,8 +40,8 @@ end
 
 ## GCE2
 function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Float64,τ::Float64=0.0,
-    νn::Float64=0.0;ic::Array{ComplexF64,2},dt::Float64=0.01,t_end::Float64=1000.0,poscheck::Bool=false,savefreq::Int=20,poscheckfreq::Float64=50.0,kwargs...)
-    A = acoeffs(ly,ny,Ξ,τ)
+    νn::Float64=0.0;jw::Float64=0.05,ic::Array{ComplexF64,2},dt::Float64=0.01,t_end::Float64=1000.0,poscheck::Bool=false,savefreq::Int=20,poscheckfreq::Float64=50.0,kwargs...)
+    A = acoeffs(ly,ny,Ξ,τ,jw=jw)
     B = bcoeffs(lx,ly,nx,ny,β,τ,νn)
     Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
     # p = [nx,ny,Λ,A,B,Cp,Cm]
@@ -65,8 +65,8 @@ function gce2(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Fl
 end
 
 function gce2_etd(lx::Float64,ly::Float64,nx::Int,ny::Int,Λ::Int,Ξ::Float64,β::Float64,τ::Float64=0.0,
-    νn::Float64=0.0;ic::Array{ComplexF64,2},dt::Float64=0.01,t_end::Float64=1000.0,poscheck::Bool=false,savefreq::Int=20,poscheckfreq::Float64=50.0,kwargs...)
-    A = acoeffs(ly,ny,Ξ,τ)
+    νn::Float64=0.0;jw::Float64=0.05,ic::Array{ComplexF64,2},dt::Float64=0.01,t_end::Float64=1000.0,poscheck::Bool=false,savefreq::Int=20,poscheckfreq::Float64=50.0,kwargs...)
+    A = acoeffs(ly,ny,Ξ,τ,jw=jw)
     B = bcoeffs(lx,ly,nx,ny,β,τ,νn)
     Cp,Cm = ccoeffs(lx,ly,nx,ny,Λ)
     # p = [nx,ny,Λ,A,B,Cp,Cm]
